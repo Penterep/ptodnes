@@ -1,0 +1,128 @@
+# This workflow will install Python dependencies, run tests and lint with a variety of Python versions
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
+
+name: Python package
+
+on:
+  push:
+    branches: [ "main" ]
+    tags:
+      - "v*"
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Run tests for python version
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+        os: [ubuntu-latest, macos-latest]
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v3
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install unix dependencies
+      run: |
+        curl -sSL https://install.python-poetry.org | python3 -
+      if: matrix.os != 'windows-latest'
+
+    - name: Install windows dependencies
+      run: |
+        (Invoke-WebRequest -Uri https://install.python-poetry.org -UseBasicParsing).Content | py -
+        if (-not (Get-Command poetry -ErrorAction Ignore)) { echo 'if (-not (Get-Command poetry -ErrorAction Ignore)) { $env:Path += ";$env:APPDATA\Python\Scripts" }' | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append }
+        $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User") 
+      if: matrix.os == 'windows-latest'
+
+    - name: Install poetry project
+      run: |
+        poetry install --with test
+      
+    - name: Lint with flake8
+      continue-on-error: true
+      run: |
+        echo "# Flake8 results">> $GITHUB_STEP_SUMMARY
+        echo -n "Python syntax errors: ">> $GITHUB_STEP_SUMMARY
+        # stop the build if there are Python syntax errors or undefined names
+        poetry run flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics >> $GITHUB_STEP_SUMMARY
+        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+        echo "Flake8 output:">> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
+        poetry run flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
+    - name: Lint with pylint
+      continue-on-error: true
+      run: |
+        echo "# PyLint results" >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
+        poetry run pylint odnes --exit-zero --max-line-length=127 >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
+    - name: Run tests
+      continue-on-error: true
+      run: |
+        echo "# Code coverage">> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
+        poetry run pytest -v --md-report --md-report-flavor gfm --md-report-output report.md --cov odnes tests >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
+        echo "# Tests reports" >> $GITHUB_STEP_SUMMARY
+        cat report.md >> $GITHUB_STEP_SUMMARY
+      env:
+        CI: true
+  package:
+    name: Build python wheel
+    permissions:
+      contents: write
+    runs-on: ubuntu-24.04
+    needs: test
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.13
+      uses: actions/setup-python@v3
+      with:
+        python-version: 3.13
+    - name: Install dependencies
+      run: |
+        curl -sSL https://install.python-poetry.org | python3 -
+        poetry install --only-root >> $GITHUB_STEP_SUMMARY
+    - name: Build wheel
+      run: |
+        poetry build -f wheel >> $GITHUB_STEP_SUMMARY
+    - name: Set env project version
+      run: echo "PROJECT_VERSION=v$(poetry version -s)" >> $GITHUB_ENV
+    - name: Upload ptodnes build artifact
+      uses: actions/upload-artifact@v4.4.3
+      with:
+        name: ptodnes
+        path: dist/*.whl
+    - name: Move files
+      run: |
+        mv dist/*.whl .
+    - name: Prerelease ODNES wheel
+      continue-on-error: true
+      uses: softprops/action-gh-release@v2
+      if: startsWith(github.ref, 'refs/heads/')
+      with:
+        generate_release_notes: true
+        prerelease: true
+        name: "Development Build ${{ env.PROJECT_VERSION }}"
+        tag_name: "${{ env.PROJECT_VERSION }}-dev"
+        files: |
+          *.whl
+    - name: Release ODNES wheel
+      continue-on-error: true
+      uses: softprops/action-gh-release@v2
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        generate_release_notes: true
+        make_latest: true
+        prerelease: false
+        files: |
+          *.whl
+        
+        
