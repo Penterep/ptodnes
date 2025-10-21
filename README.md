@@ -79,6 +79,12 @@ api_keys = [
     'API_KEY_1',
     'API_KEY_2'
 ]
+
+[Wordlist]
+wordlists = [
+'/usr/share/wordlists/seclists/Discovery/DNS/namelist.txt'
+]
+
 ...
 [<Datasource>]
 api_keys = [

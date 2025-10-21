@@ -1,3 +1,5 @@
+from typing import Generator, List
+
 from ptodnes.DNS.record import DNSRecord
 from ptodnes.datasources.datasource import DatasourceObject
 
@@ -80,3 +82,11 @@ class DNSRecordDict(dict[str, list[DNSRecord]]):
 
         for key in keys:
             del(self[key])
+
+    def seq(self) -> Generator[DatasourceObject]:
+        for key in self.keys():
+            do = DatasourceObject(domain=key, DNSData=self[key])
+            yield do
+
+    def as_list(self) -> List[DatasourceObject]:
+        return list(self.seq())

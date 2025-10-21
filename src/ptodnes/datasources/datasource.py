@@ -109,7 +109,16 @@ class Datasource(metaclass=ABCMeta):
         if value<0: value=0
         self._retry = value
 
+    @property
+    def wordlists(self):
+        return self._wordlists
+
+    @wordlists.setter
+    def wordlists(self, value: list):
+        self._wordlists = value
+
     def __init__(self, **kwargs):
+        self._wordlists: list = None
         self._api_url: str
         self._verbose: bool = True
         self._verbose_level: int = 3
