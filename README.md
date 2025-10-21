@@ -63,6 +63,29 @@ ptodnes -d example.com -j -o example -t A AAAA
 
 ```
 
+## Configuration
+Configuration is stored in TOML file. Default location is `~/ptodnes.toml`.
+
+Example configuration:
+```toml
+[VirusTotal]
+api_keys = [
+    'API_KEY_1',
+    'API_KEY_2'
+]
+
+[SecurityTrails]
+api_keys = [
+    'API_KEY_1',
+    'API_KEY_2'
+]
+...
+[<Datasource>]
+api_keys = [
+    '...'
+]
+```
+
 ## Dependencies
 ```
 ptlibs
