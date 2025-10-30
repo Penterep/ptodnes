@@ -117,6 +117,14 @@ class Datasource(metaclass=ABCMeta):
     def wordlists(self, value: list):
         self._wordlists = value
 
+    @property
+    def qtype(self):
+        return self._qtype
+
+    @qtype.setter
+    def qtype(self, value):
+        self._qtype = value
+
     def __init__(self, **kwargs):
         self._wordlists: list = None
         self._api_url: str
@@ -124,6 +132,7 @@ class Datasource(metaclass=ABCMeta):
         self._verbose_level: int = 3
         self._timeout: int = 5
         self._retry: int = 5
+        self._qtype: list = None
 
     @abstractmethod
     async def search(self, domain: str):
@@ -138,7 +147,8 @@ class Datasource(metaclass=ABCMeta):
     def _print_level(self, level):
         return self._verbose and self._verbose_level >= level
     def print_info(self, msg, *args, **kwargs):
-        ptprint(out_if(f"{self.__class__.__name__}: {msg}", "INFO", self._print_level(3)), *args, **kwargs)
+        if self._print_level(level=3):
+            ptprint(f"{self.__class__.__name__}: {msg}", "INFO", *args, **kwargs)
     def print_ok(self, msg, *args, **kwargs):
         ptprint(out_if(f"{self.__class__.__name__}: {msg}", "OK", self._print_level(3)), *args, **kwargs)
     def print_error(self, msg, *args, **kwargs):

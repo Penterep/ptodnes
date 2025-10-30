@@ -2,7 +2,7 @@ import asyncio
 import aiofiles
 import re
 
-from ptodnes.datasources.datasource import Datasource, DatasourceObject, DNSRecordGenerator, date_from_utc
+from ptodnes.datasources.datasource import Datasource, DatasourceObject, DNSRecordGenerator
 from ptodnes.DNS.odnesdns import OdnesDNS
 
 from ptodnes.DNS.dns_record_dict import DNSRecordDict
@@ -10,14 +10,8 @@ from ptodnes.DNS.dns_record_dict import DNSRecordDict
 
 class Wordlist(Datasource):
 
-    def __init__(self, api_key: str = '', *, wordlists: list = None):
+    def __init__(self, api_key: str = ''):
         super().__init__()
-        if wordlists:
-            self.__wordlists = wordlists
-            return
-        if self._wordlists:
-            self.__wordlists = self._wordlists
-            return
         wordlists_cfg = self.config.get("wordlists", [])
         if type(wordlists_cfg) is type(''):
             self.__wordlists = [wordlists_cfg]
@@ -27,6 +21,8 @@ class Wordlist(Datasource):
 
 
     async def search(self, domain: str):
+        if self._wordlists:
+            self.__wordlists = self._wordlists
         self.print_info("Started wordlist search")
         loop = asyncio.get_event_loop()
         dns = OdnesDNS(loop)
@@ -43,14 +39,19 @@ class Wordlist(Datasource):
         res = DNSRecordDict()
         res.extend(datasource_objects)
 
-        qtypes = ['A', 'AAAA', 'CNAME', 'MX', 'NAPTR', 'NS', 'PTR', 'SOA', 'SRV', 'TXT', ]
+        qtypes: list
+        if self._qtype:
+            qtypes = self._qtype
+        else:
+            qtypes = ['A', 'AAAA', 'CNAME']
 
         qtasks = []
         for qtype in qtypes:
-            task = loop.create_task(dns.query(res, qtype=qtype))
+            task = loop.create_task(dns.query(res, qtype=qtype, print_func=self.print_info))
             qtasks.append(task)
         await asyncio.gather(*qtasks)
-
+        if self._verbose:
+            print()
         res.filter_untrusted()
 
         return res.as_list()

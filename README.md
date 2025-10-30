@@ -39,6 +39,7 @@ ptodnes -d example.com
 ptodnes -d example.com example.net
 ptodnes -d example.com -D VirusTotal CRTsh
 ptodnes -d example.com -j -o example -t A AAAA
+ptodnes -d example.com -D Wordlist -w /usr/share/wordlists/rockyou.txt
 ```
 
 ## Options
@@ -59,6 +60,7 @@ ptodnes -d example.com -j -o example -t A AAAA
 -T  --timeout             <timeout>         Datasource connection timeout (in seconds, default:5)
 -v  --version                               Print version and exit
 -V  --verbose             <1|2|3|4>         Set verbosity level (1=ERROR, 2=WARNING, 3=INFO, 4=DEBUG)
+-w  --wordlist            <wordlist ...>    Path to wordlist(s) for wordlist search.
 -y  --yaml                                  Output in YAML format
 
 ```

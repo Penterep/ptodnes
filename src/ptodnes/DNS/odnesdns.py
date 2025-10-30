@@ -14,14 +14,17 @@ class OdnesDNS(metaclass=Singleton):
     def __init__(self, loop):
         self.__resolver = aiodns.DNSResolver(loop=loop)
 
-    async def query_one(self, domain: str, domain_data: list[DNSRecord], qtype='ANY'):
+    async def query_one(self, domain: str, domain_data: list[DNSRecord], qtype='ANY', *, print_func=None):
         """
         Query one domain with selected record type, update domain_data with results.
         :param domain: domain to query.
         :param domain_data: domain data to update.
         :param qtype: query type.
+        :param print_func: output function.
         """
         try:
+            if print_func:
+                print_func(f"querying {domain}", clear_to_eol=True, end='\r')
             data = await self.__resolver.query(domain, qtype) #ANY not working on all servers
             preprocessed = []
             if type(data) is not type([]):
@@ -74,7 +77,7 @@ class OdnesDNS(metaclass=Singleton):
         except aiodns.error.DNSError:
             pass
 
-    async def query(self, domain_list: DNSRecordDict, qtype='ANY'):
+    async def query(self, domain_list: DNSRecordDict, qtype='ANY', *, print_func=None):
         """
         Query provided domain list with selected record type, update its data with results.
         :param domain_list: domain list to query.
@@ -82,7 +85,7 @@ class OdnesDNS(metaclass=Singleton):
         """
         tasks = []
         for domain, info in domain_list.items():
-            task = asyncio.create_task(self.query_one(domain, info, qtype))
+            task = asyncio.create_task(self.query_one(domain, info, qtype, print_func=print_func))
             tasks.append(task)
         await asyncio.gather(*tasks)
 

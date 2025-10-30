@@ -39,7 +39,8 @@ async def process(loop: asyncio.AbstractEventLoop,
                   silent: bool,
                   verbosity: int,
                   timeout: int,
-                  retry: int) -> DNSRecordDict | None:
+                  retry: int,
+                  wordlists: list) -> DNSRecordDict | None:
     """
     :param loop: asyncio event loop
     :param domains: list of domains to search
@@ -70,6 +71,7 @@ async def process(loop: asyncio.AbstractEventLoop,
                 for datasource in ptodnes.datasources.datasources.values():
                     datasource.timeout = timeout
                     datasource.retry = retry
+                    datasource.wordlists = wordlists
                     datasource.set_verbose(silent)
                     datasource.set_verbose_level(verbosity)
                     task = loop.create_task(datasource.search(domain))
@@ -79,6 +81,7 @@ async def process(loop: asyncio.AbstractEventLoop,
                     datasource = ptodnes.datasources.datasources[selected_datasource]
                     datasource.timeout = timeout
                     datasource.retry = retry
+                    datasource.wordlists = wordlists
                     datasource.set_verbose(silent)
                     datasource.set_verbose_level(verbosity)
                     task = loop.create_task(datasource.search(domain))

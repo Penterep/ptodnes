@@ -49,6 +49,7 @@ def get_help():
             ["-T", "--timeout", "<timeout>", "Datasource connection timeout (in seconds, default:5)"],
             ["-v", "--version", "", "Print version and exit"],
             ["-V", "--verbose", "<1|2|3|4>", "Set verbosity level (1=ERROR, 2=WARNING, 3=INFO, 4=DEBUG)"],
+            ["-w", "--wordlist", "<wordlist ...>", "Path to wordlist(s) for wordlist search"],
             ["-y", "--yaml", "", "Output in YAML format"],
         ]
         }]
@@ -72,6 +73,7 @@ async def main(loop):
                         choices=ptodnes.datasources.names,
                         default="ANY",
                         type=str)
+    parser.add_argument("-w", "--wordlist", help="path to wordlist for searching", nargs='+', metavar="WORDLIST", type=str)
     parser.add_argument("-C", "--config", help="config file to use", type=str)
     parser.add_argument("-s", "--silent", help="disable verbose output", action="store_false", default=True)
     parser.add_argument("-t",
@@ -114,8 +116,7 @@ async def main(loop):
     if args.config:
         ConfigProvider().config_file = pathlib.Path(args.config)
 
-
-    result = await ptodnes.process(loop, args.domain, args.datasource, args.type, args.nonxdomain, args.query, args.exclude_unverified, args.format, args.silent, args.verbose, args.timeout, args.retry)
+    result = await ptodnes.process(loop, args.domain, args.datasource, args.type, args.nonxdomain, args.query, args.exclude_unverified, args.format, args.silent, args.verbose, args.timeout, args.retry, args.wordlist)
 
 
     if result is None:
