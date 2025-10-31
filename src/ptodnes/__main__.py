@@ -3,10 +3,13 @@ import pathlib
 from argparse import ArgumentParser
 import sys
 import os
+from operator import indexOf
+
 import ptodnes
 import ptodnes.datasources
 import ptodnes.dataexporter
 from ptodnes import dataexporter
+from ptodnes.DNS.odnesdns import OdnesDNS
 from ptodnes.configprovider.configprovider import ConfigProvider
 from ptlibs.ptprinthelper import help_print, print_banner
 import importlib.metadata
@@ -38,6 +41,7 @@ def get_help():
             ["-d", "--domain", "<domain ...>", "Domains to search for"],
             ["-D", "--datasource", "<datasource ...>", "Datasources to browse"],
             ["-e", "--exclude-unverified", "", "Exclude unverified records"],
+            ["-i", "--ip-address", "<ip address ...>", "IP to search for"],
             ["-j", "--json", "", "Output in JSON format"],
             ["-l", "--list", "", "List available datasources"],
             ["-n", "--nonxdomain", "", "Filter results with no DNS data"],
@@ -63,7 +67,7 @@ async def main(loop):
                         "--domain",
                         help="domain to search for",
                         nargs='+',
-                        required=('-l' not in sys.argv and '--list' not in sys.argv),
+                        required=(('-l' not in sys.argv and '--list' not in sys.argv) and ('-i' not in sys.argv and '--ip-address' not in sys.argv)),
                         type=str)
     parser.add_argument("-D",
                         "--datasource",
@@ -84,6 +88,7 @@ async def main(loop):
                         choices=['ANY', 'A', 'AAAA', 'CNAME', 'MX', 'NAPTR', 'NS', 'PTR', 'SOA', 'SRV', 'TXT',],
                         default=["ANY"],
                         type=str)
+    parser.add_argument("-i", "--ip-address", help="ip for reverse lookup", type=str, nargs='+', metavar="IP")
     parser.add_argument("-o", "--output", help="save results to files", type=str)
     parser.add_argument("-n", "--nonxdomain", help="disable output of NXDOMAIN", action="store_true", default=False)
     parser.add_argument("-V", "--verbose", help="verbosity level (1=ERROR, 2=WARNING, 3=INFO, 4=DEBUG)", type=int, default=3)
@@ -116,7 +121,24 @@ async def main(loop):
     if args.config:
         ConfigProvider().config_file = pathlib.Path(args.config)
 
-    result = await ptodnes.process(loop, args.domain, args.datasource, args.type, args.nonxdomain, args.query, args.exclude_unverified, args.format, args.silent, args.verbose, args.timeout, args.retry, args.wordlist)
+    domains = []
+
+    if args.domain:
+        domains.extend(args.domain)
+
+    if args.ip_address:
+        dns = OdnesDNS(loop=loop)
+        for ip in args.ip_address:
+            for ptr in await dns.reverse(ip):
+                if ptr:
+                    arr = ptr.split('.')
+                    if len(arr) >= 3:
+                        domain = '.'.join(arr[1:])
+                        domains.append(domain)
+                    elif len(arr) == 2:
+                        domains.append('.'.join(arr))
+
+    result = await ptodnes.process(loop, domains, args.datasource, args.type, args.nonxdomain, args.query, args.exclude_unverified, args.format, args.silent, args.verbose, args.timeout, args.retry, args.wordlist)
 
 
     if result is None:

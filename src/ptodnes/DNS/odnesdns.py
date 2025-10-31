@@ -1,11 +1,12 @@
 import asyncio
+import re
 from datetime import datetime, timezone
 import aiodns
 from ptodnes.DNS.record import  DNSRecord
 from ptodnes.DNS.dns_record_dict import DNSRecordDict
 from ptodnes.datasources.datasource import DNSRecordGenerator, DatasourceObject
 from ptodnes.metaclasses import Singleton
-
+from typing import Sequence
 
 class OdnesDNS(metaclass=Singleton):
     """
@@ -13,6 +14,17 @@ class OdnesDNS(metaclass=Singleton):
     """
     def __init__(self, loop):
         self.__resolver = aiodns.DNSResolver(loop=loop)
+        self.__rev4 = re.compile(r"^((25[0-5]|(2[0-4]|1\d|[1-9]|)\d)\.?\b){4}$")
+        self.__rev6 = re.compile(r'(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))', re.IGNORECASE)
+
+    async def reverse(self, ip: str) -> list[str]:
+        if self.__rev4.match(ip) or self.__rev6.match(ip):
+            try:
+                res = await self.__resolver.gethostbyaddr(ip)
+                return res.aliases
+            except aiodns.error.DNSError:
+                return []
+        return []
 
     async def query_one(self, domain: str, domain_data: list[DNSRecord], qtype='ANY', *, print_func=None):
         """
