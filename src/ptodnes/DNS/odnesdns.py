@@ -6,7 +6,6 @@ from ptodnes.DNS.record import  DNSRecord
 from ptodnes.DNS.dns_record_dict import DNSRecordDict
 from ptodnes.datasources.datasource import DNSRecordGenerator, DatasourceObject
 from ptodnes.metaclasses import Singleton
-from typing import Sequence
 
 class OdnesDNS(metaclass=Singleton):
     """

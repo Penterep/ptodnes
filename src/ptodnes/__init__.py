@@ -65,7 +65,10 @@ async def process(loop: asyncio.AbstractEventLoop,
         for domain in domains:
             if domain.endswith('.'):
                 domain = domain[:-1]
-            domain = punycode.convert(domain, True)
+            try:
+                domain = punycode.convert(domain, True)
+            except:
+                pass
             rgx = re.compile(r'^((?!-)[A-Za-z0-9-]{1,63}(?<!-)\.)+[A-Za-z]{2,6}$')
             if not rgx.match(domain):
                 ptprint(out_if(f"{domain} is not a valid domain name, SKIPPING", "WARNING", silent, colortext=True))

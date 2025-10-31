@@ -3,7 +3,6 @@ import pathlib
 from argparse import ArgumentParser
 import sys
 import os
-from operator import indexOf
 
 import ptodnes
 import ptodnes.datasources
