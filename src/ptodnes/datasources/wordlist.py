@@ -7,6 +7,8 @@ from ptodnes.DNS.odnesdns import OdnesDNS
 
 from ptodnes.DNS.dns_record_dict import DNSRecordDict
 
+import punycode
+
 
 class Wordlist(Datasource):
 
@@ -29,7 +31,13 @@ class Wordlist(Datasource):
         datasource_objects = []
         rgx = re.compile(r'^((?!-)[A-Za-z0-9-]{1,63}(?<!-)\.)+[A-Za-z]{2,6}$')
         async for sub in self.read_wordlist():
-            subdomain = sub + '.' + domain
+            subdomain = sub + '.' + domain if sub else domain
+            d = ''
+            try:
+                d = subdomain
+                subdomain = punycode.convert(subdomain, True)
+            except:
+                continue
             if rgx.match(subdomain):
                 datasource_object = DatasourceObject(domain=subdomain, DNSData=[
                     DNSRecordGenerator(source=self.__class__.__name__, type='<NONE>', verified=False, value="<EMPTY>",

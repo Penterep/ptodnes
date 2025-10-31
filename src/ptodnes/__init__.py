@@ -7,6 +7,8 @@ from ptodnes.DNS.odnesdns import OdnesDNS
 from ptodnes.DNS.dns_record_dict import DNSRecordDict
 import re
 from ptlibs.ptprinthelper import out_if, ptprint
+import punycode
+
 def add_signal_handlers():
     """
     Properly handles SIGINT and SIGTERM signals. Ensures correct end of all coroutines.
@@ -63,6 +65,10 @@ async def process(loop: asyncio.AbstractEventLoop,
         for domain in domains:
             if domain.endswith('.'):
                 domain = domain[:-1]
+            try:
+                domain = punycode.convert(domain, True)
+            except:
+                pass
             rgx = re.compile(r'^((?!-)[A-Za-z0-9-]{1,63}(?<!-)\.)+[A-Za-z]{2,6}$')
             if not rgx.match(domain):
                 ptprint(out_if(f"{domain} is not a valid domain name, SKIPPING", "WARNING", silent, colortext=True))

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ptodnes"
-version = "1.10.1"
+version = "1.10.2.10"
 description = ""
 authors = ["Ondrej Dohnal <xdohna45@vutbr.cz>"]
 license = "MIT"
@@ -14,6 +14,7 @@ aiopg   = "^1.4.0"
 pyyaml  = "^6.0.2"
 ptlibs  = "^1.0.17"
 aiofiles = "^25.1.0"
+punycode = "^0.2.1"
 
 [tool.poetry.group.docs]
 optional = true

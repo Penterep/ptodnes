@@ -847,18 +847,15 @@ dev = ["flake8", "markdown", "twine", "wheel"]
 
 [[package]]
 name = "idna"
-version = "3.10"
+version = "3.4"
 description = "Internationalized Domain Names in Applications (IDNA)"
 optional = false
-python-versions = ">=3.6"
+python-versions = ">=3.5"
 groups = ["main", "docs"]
 files = [
-    {file = "idna-3.10-py3-none-any.whl", hash = "sha256:946d195a0d259cbba61165e88e65941f16e9b36ea6ddb97f00452bae8b1287d3"},
-    {file = "idna-3.10.tar.gz", hash = "sha256:12f65c9b470abda6dc35cf8e63cc574b1c52b11df2c86030af0ac09b01b13ea9"},
+    {file = "idna-3.4-py3-none-any.whl", hash = "sha256:90b77e79eaa3eba6de819a0c442c0b4ceefc341a7a2ab77d7562bf49f425c5c2"},
+    {file = "idna-3.4.tar.gz", hash = "sha256:814f528e8dead7d329833b91c5faa87d60bf71824cd12a7530b5526063d02cb4"},
 ]
-
-[package.extras]
-all = ["flake8 (>=7.1.1)", "mypy (>=1.11.2)", "pytest (>=8.3.2)", "ruff (>=0.6.2)"]
 
 [[package]]
 name = "imagesize"
@@ -1540,6 +1537,22 @@ filelock = "*"
 idna = "*"
 requests = "*"
 requests-toolbelt = "*"
+
+[[package]]
+name = "punycode"
+version = "0.2.1"
+description = "Punycode Converter Library for Python"
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "punycode-0.2.1-py3-none-any.whl", hash = "sha256:5c6c2c1fcfdcd50752fe4e68d402495d9ae2a71ac73915bc6af39cc7ccd99eb5"},
+    {file = "punycode-0.2.1.tar.gz", hash = "sha256:2619d4cc3d517f5b15f092d2e4108f37a44689514207f359ae6c5edf4fcc341d"},
+]
+
+[package.dependencies]
+idna = "3.4"
+wincertstore = "0.2"
 
 [[package]]
 name = "pycares"
@@ -2285,6 +2298,18 @@ files = [
 watchmedo = ["PyYAML (>=3.10)"]
 
 [[package]]
+name = "wincertstore"
+version = "0.2"
+description = "Python module to extract CA and CRL certs from Windows' cert store (ctypes based)."
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "wincertstore-0.2-py2.py3-none-any.whl", hash = "sha256:22d5eebb52df88a8d4014d5cf6d1b6c3a5d469e6c3b2e2854f3a003e48872356"},
+    {file = "wincertstore-0.2.zip", hash = "sha256:780bd1557c9185c15d9f4221ea7f905cb20b93f7151ca8ccaed9714dce4b327a"},
+]
+
+[[package]]
 name = "yarl"
 version = "1.22.0"
 description = "Yet another URL library"
@@ -2432,4 +2457,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = ">3.11, <=3.15"
-content-hash = "2f1609cc1756db7ac86121022a875aaa2dd5aad01d858878239a4685aaefdbc4"
+content-hash = "974436648e5facac6bc322c57a89422b8d7e5f8c1393cd14f9cf75786e831bb8"
