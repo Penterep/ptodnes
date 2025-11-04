@@ -45,7 +45,6 @@ def get_help():
             ["-l", "--list", "", "List available datasources"],
             ["-n", "--nonxdomain", "", "Filter results with no DNS data"],
             ["-o", "--output", "<file_prefix>", "Save results to files (format specification required)"],
-            ["-p", "--ptjson", "", "Output in ptJSONlib format"],
             ["-q", "--query", "", "Query domains against DNS servers"],
             ["-r", "--retry", "<count>", "Number of attempts (default:5)"],
             ["-t", "--type", "<type ...>", "Types of DNS records to search for"],
@@ -97,10 +96,9 @@ async def main(loop):
     parser.add_argument("-q", "--query", help="query domains against DNS servers", action="store_true", default=False, required=('-e' in sys.argv or '--exclude-unverified' in sys.argv))
     parser.add_argument("-e", "--exclude-unverified", help="exclude unverified records", action="store_true", default=False)
     format_parser = parser.add_mutually_exclusive_group(required=('-o' in sys.argv or '--output' in sys.argv))
-    format_parser.add_argument("-j", "--json", help="output in JSON format", action="store_const", const="json", dest="format")
     format_parser.add_argument("-y", "--yaml", help="output in YAML format", action="store_const", const="yaml", dest="format")
     format_parser.add_argument("-c", "--csv", help="output in CSV format", action="store_const", const="csv", dest="format")
-    format_parser.add_argument("-p", "--ptjson", help="output in ptJSONlib format", action="store_const", const="ptjson",
+    format_parser.add_argument("-j", "--json", help="output in ptJSONlib format", action="store_const", const="ptjson",
                                dest="format")
 
     if len(sys.argv) == 1 or '-h' in sys.argv or '--help' in sys.argv:
