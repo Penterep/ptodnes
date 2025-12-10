@@ -19,7 +19,21 @@ class VirusTotal(Datasource):
         except StopIteration:
             self._api_key = api_key
     
-    
+    async def check_api_key(self):
+        if not self._api_key:
+            self.print_error("Missing, disabling module")
+            self._enabled = False
+            return
+        timeout = aiohttp.ClientTimeout(total=self.timeout)
+        headers = {"accept": "application/json", "x-apikey": self._api_key}
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.get('https://www.virustotal.com/api/v3/domains/example.com', headers=headers) as response:
+                if response.status != 200:
+                    self.print_error("Invalid, disabling module")
+                    self._enabled = False
+                else:
+                    self.print_ok("Present")
+
     async def search(self, domain: str):
         """
         Search for `resource` information for `domain` in VirusTotal.
@@ -28,6 +42,9 @@ class VirusTotal(Datasource):
         :param resource: The resource to search for. Valid resources are: `comments`, `whois`, `subdomains`, `resolutions`, `detected_urls`.
         :return: DomainInfo object if domain is found, None otherwise
         """
+
+        if not self._enabled:
+            return []
         datasource_objects = []
         self.print_info(f"Started search for domain {domain}")
         for i in range(self.retry):

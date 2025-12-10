@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
 from datetime import timezone, datetime
-from typing import overload, Self
+from typing import overload, Self, Any, Optional
 
 from ptlibs.ptprinthelper import out_if, ptprint
 
@@ -84,9 +84,10 @@ class DatasourceObject:
 
 class Datasource(metaclass=ABCMeta):
     """
-    Abstract base class for all datasources.
+    Abstract base class for all datasource.
     """
 
+    loaded_datasource: dict[str, Self] = {}
     @property
     def config(self):
         return ConfigProvider().get_config(self.__class__.__name__)
@@ -126,13 +127,27 @@ class Datasource(metaclass=ABCMeta):
         self._qtype = value
 
     def __init__(self, **kwargs):
-        self._wordlists: list = None
-        self._api_url: str
+        self._wordlists: Optional[list] = None
+        self._api_url: Optional[str]
         self._verbose: bool = True
         self._verbose_level: int = 3
         self._timeout: int = 5
         self._retry: int = 5
-        self._qtype: list = None
+        self._qtype: Optional[list] = None
+        self._api_key: Optional[str] = None
+        self._enabled: bool = True
+
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__()
+        instance = cls()
+        Datasource.loaded_datasource[cls.__name__.lower()] = instance
+
+    def on_load(self):
+        self.print_ok("Datasource loaded")
+
+    @abstractmethod
+    async def check_api_key(self):
+        pass
 
     @abstractmethod
     async def search(self, domain: str):

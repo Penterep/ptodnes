@@ -1,3 +1,5 @@
+from typing import overload
+
 import aiohttp
 import asyncio
 from ptodnes.datasources.datasource import Datasource, DatasourceObject, date_from_iso, DNSRecordGenerator
@@ -18,6 +20,21 @@ class Shodan(Datasource):
         except StopIteration:
             self._api_key = ''
 
+    async def check_api_key(self):
+        if not self._api_key:
+            self.print_error("Missing, disabling module")
+            self._enabled = False
+            return
+        timeout = aiohttp.ClientTimeout(total=self.timeout)
+        headers = {"accept": "application/json"}
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.get(f'https://api.shodan.io/api-info?key={self._api_key}', headers=headers) as response:
+                if response.status != 200:
+                    self.print_error("Invalid, disabling module")
+                    self._enabled = False
+                else:
+                    self.print_ok("Present")
+
     async def search(self, domain: str):
         """
         Search for `resource` information for `domain` in Shodan.
@@ -25,6 +42,9 @@ class Shodan(Datasource):
         :param domain: The domain to search for.
         :return: `DatasourceObject` object if domain is found, None otherwise
         """
+
+        if not self._enabled:
+            return []
         self.print_info(f"Started search for domain {domain}")
         for i in range(self.retry):
             try:

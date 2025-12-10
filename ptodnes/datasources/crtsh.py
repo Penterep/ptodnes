@@ -8,6 +8,10 @@ class CRTsh(Datasource):
     def __init__(self):
         super().__init__()
 
+
+    async def check_api_key(self):
+        self.print_warning("API key not required")
+
     async def search(self, domain: str):
         try:
             self.print_info(f"Started search for domain {domain}")

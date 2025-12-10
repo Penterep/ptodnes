@@ -20,7 +20,8 @@ class Wordlist(Datasource):
         else:
             self.__wordlists = wordlists_cfg
 
-
+    async def check_api_key(self):
+        pass
 
     async def search(self, domain: str):
         if self._wordlists:

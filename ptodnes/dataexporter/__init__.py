@@ -1,6 +1,6 @@
 from ptodnes.DNS.record import DNSRecord
 from ptodnes.DNS.dns_record_dict import DNSRecordDict
-from ptlibs import ptjsonlib
+from ptlibs import ptjsonlib, out_if
 import yaml
 import json
 import dataclasses
@@ -27,7 +27,7 @@ class OdnesDumper(yaml.Dumper):
 
 
 
-def convert(domain_data: DNSRecordDict, output_format: str, separator=';') -> str:
+def convert(domain_data: DNSRecordDict, output_format: str, separator=';', very_verbose: bool = False) -> str:
     """
     Convert domain data to output format
     :param domain_data: DNSRecordDict to convert
@@ -63,16 +63,21 @@ def convert(domain_data: DNSRecordDict, output_format: str, separator=';') -> st
                     ptjson.add_node(record_node)
             ptjson.set_status('finished')
             output = ptjson.get_result_json()
-        case _:
-            output = ""
+        case 'verbose':
+            output = '\n'
             for domain, records in domain_data.items():
-                output += f"{domain}:\n"
-                if not records:
-                    output += f"{' ' * 2}NXDOMAIN\n"
-                for record in records:
-                    output += f'{' ' * 2}{record.type}:\n'
-                    output += f"{' ' * 4}Value: {record.value}\n"
-                    output += f"{' ' * 4}Last seen: {record.record_last_seen}\n"
-                    output += f"{' ' * 4}Verified: {record.verified}\n"
-                    output += f"{' ' * 4}Source: {record.source}\n"
+                if False:
+                    if not records:
+                        output += f"{' ' * 2}NXDOMAIN\n"
+                    for record in records:
+                        output += f'{' ' * 2}{record.type}:\n'
+                        output += f"{' ' * 4}Value: {record.value}\n"
+                        output += f"{' ' * 4}Last seen: {record.record_last_seen}\n"
+                        output += f"{' ' * 4}Verified: {record.verified}\n"
+                        output += f"{' ' * 4}Source: {record.source}\n"
+        case _:
+            output = "\n"
+            output += out_if("Summary\n", bullet_type='INFO', colortext=True, condition=True)
+            for domain, records in domain_data.items():
+                output += out_if(f"{domain}\n", bullet_type='TEXT', colortext=False, condition=True)
     return output

@@ -18,6 +18,23 @@ class SecurityTrails(Datasource):
             self._api_key = next(self.__api_keys)
         except StopIteration:
             self._api_key = api_key
+
+    async def check_api_key(self):
+        if not self._api_key:
+            self.print_error("Missing, disabling module")
+            self._enabled = False
+            return
+        timeout = aiohttp.ClientTimeout(total=self.timeout)
+        headers = {"accept": "application/json", "APIKEY": self._api_key}
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.get('https://api.securitytrails.com/v1/ping', headers=headers) as response:
+                if response.status != 200:
+                    self.print_error("Invalid, disabling module")
+                    self._enabled = False
+                else:
+                    self.print_ok("Present")
+
+
     
     
     async def search(self, domain: str):
@@ -27,6 +44,8 @@ class SecurityTrails(Datasource):
         :param domain: The domain to search for.
         :return: `DatasourceObject` object if domain is found, None otherwise
         """
+        if not self._enabled:
+            return []
         datasource_objects = []
         self.print_info(f"Started search for domain {domain}")
         for i in range(self.retry):
@@ -37,7 +56,7 @@ class SecurityTrails(Datasource):
                 headers = {"accept": "application/json", "APIKEY": self._api_key}
                 timeout = aiohttp.ClientTimeout(total=self.timeout)
                 async with aiohttp.ClientSession(timeout=timeout) as session:
-                    while next_url != None:
+                    while next_url is not None:
                         async with session.post(next_url, headers=headers, json=body) as response:
                             if response.status != 200:
                                 if response.status == 429:
