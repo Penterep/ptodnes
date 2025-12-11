@@ -14,7 +14,7 @@ pipx install <path_to_downloaded_whl_file>
 
 Example:
 ```bash
-pipx install ~/Downloads/ptodnes-1.11.0-py3-none-any.whl
+pipx install ~/Downloads/ptodnes-1.11.1-py3-none-any.whl
 ```
 
 ## Adding to PATH

@@ -77,7 +77,7 @@ async def main(loop):
                         metavar="DATASOURCE",
                         choices=ptodnes.datasources.list_datasources(),
                         default="_",
-                        type=str)
+                        type=str.lower)
     parser.add_argument("-w", "--wordlist", help="path to wordlist for searching", nargs='+', metavar="WORDLIST", type=str)
     parser.add_argument("-C", "--config", help="config file to use", type=str)
     parser.add_argument("-s", "--silent", help="disable verbose output", action="store_false", default=True)
