@@ -1,5 +1,7 @@
 import asyncio
 import re
+from sqlite3 import OperationalError
+
 from ptodnes.datasources.datasource import Datasource, DatasourceObject, DNSRecordGenerator
 import aiopg
 
@@ -8,6 +10,8 @@ class CRTsh(Datasource):
     def __init__(self):
         super().__init__()
 
+    def add_api_key(self, api_key: str = None):
+        pass
 
     async def check_api_key(self):
         self.print_warning("API key not required")
@@ -68,8 +72,15 @@ class CRTsh(Datasource):
                 except TimeoutError:
                     self.print_warning(f"Timed out when fetching data for {domain}. Trying again. ({i+1}/{self.retry})")
                     await asyncio.sleep(2)
+                except OperationalError:
+                    self.print_error(f"Error when fetching data for {domain}. CRTsh is not accepting connections.")
+                    return []
         except asyncio.exceptions.CancelledError:
             self.print_warning(f"{domain} lookup canceled.")
             return []
         self.print_error(f"Max timeout reached for {domain}. SKIPPING.")
+        return []
+
+    async def reverse_search(self, domain: str):
+        self.print_warning("IP address lookup is not supported.")
         return []

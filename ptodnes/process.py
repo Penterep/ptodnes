@@ -18,7 +18,7 @@ async def process(loop: asyncio.AbstractEventLoop,
                   wordlist:list=None,
                   config:str=None,
                   type:list=None,
-                  ip_address:str=None,
+                  ip_address:list=None,
                   output:str=None,
                   nonxdomain:bool=False,
                   verbose:int=3,
@@ -59,49 +59,50 @@ async def process(loop: asyncio.AbstractEventLoop,
         datasource_instance.on_load()
     print()
 
+    if api:
+        for ds, api_key in api:
+            if ds.lower() in ptodnes.datasources.list_datasources():
+                ptodnes.datasources.datasources[ds.lower()].add_api_key(api_key)
+
     ptprint(out_if(f"Check API keys", "INFO", silent, colortext=True))
     for datasource_instance in ptodnes.datasources.datasources.values():
         await datasource_instance.check_api_key()
     print()
 
+
     try:
         ds_tasks = []
-        domains = list(set(domain))
-        ptprint(out_if(f"Check domain names", "INFO", silent, colortext=True))
-        for domain in domains:
-            if domain.endswith('.'):
-                domain = domain[:-1]
-            try:
-                domain = punycode.convert(domain, True)
-            except:
-                pass
-            rgx = re.compile(r'^((?!-)[A-Za-z0-9-]{1,63}(?<!-)\.)+[A-Za-z]{2,6}$')
-            if not rgx.match(domain):
-                ptprint(out_if(f"{domain} is not a valid domain name, SKIPPING", "WARNING", silent, colortext=True))
-                continue
-            ptprint(out_if(f"PASS", "OK", silent, colortext=False))
-            print()
-            if '_' in datasource:
-                for datasource in ptodnes.datasources.datasources.values():
-                    datasource.timeout = timeout
-                    datasource.retry = retry
-                    datasource.wordlists = wordlist
-                    datasource.set_verbose(silent)
-                    datasource.set_verbose_level(verbose)
+        domains = list(set(domain if domain else []))
+        if '_' in datasource:
+            for datasource in ptodnes.datasources.datasources.values():
+                datasource.timeout = timeout
+                datasource.retry = retry
+                datasource.wordlists = wordlist
+                datasource.set_verbose(silent)
+                datasource.set_verbose_level(verbose)
+                for domain in domains if domains else []:
                     task = loop.create_task(datasource.search(domain))
                     ds_tasks.append(task)
-            else:
-                for selected_datasource in datasource:
-                    datasource = ptodnes.datasources.datasources.get(selected_datasource, None)
-                    if not datasource:
-                        continue
-                    datasource.timeout = timeout
-                    datasource.retry = retry
-                    datasource.wordlists = wordlist
-                    datasource.set_verbose(silent)
-                    datasource.set_verbose_level(verbose)
+                for ip in ip_address if ip_address else []:
+                    task = loop.create_task(datasource.reverse_search(ip))
+                    ds_tasks.append(task)
+        else:
+            for selected_datasource in datasource:
+                datasource = ptodnes.datasources.datasources.get(selected_datasource, None)
+                if not datasource:
+                    continue
+                datasource.timeout = timeout
+                datasource.retry = retry
+                datasource.wordlists = wordlist
+                datasource.set_verbose(silent)
+                datasource.set_verbose_level(verbose)
+                for domain in domains if domains else []:
                     task = loop.create_task(datasource.search(domain))
                     ds_tasks.append(task)
+                for ip in ip_address if ip_address else []:
+                    task = loop.create_task(datasource.reverse_search(ip))
+                    ds_tasks.append(task)
+
         data = await asyncio.gather(*ds_tasks)
         merged = [j for i in data for j in i]
 

@@ -137,6 +137,10 @@ class Datasource(metaclass=ABCMeta):
         self._api_key: Optional[str] = None
         self._enabled: bool = True
 
+    @abstractmethod
+    def add_api_key(self, api_key: str):
+        pass
+
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__()
         instance = cls()
@@ -157,6 +161,10 @@ class Datasource(metaclass=ABCMeta):
         :param domain: The domain to search for
         :return domain_info: `DomainInfo` object if domain is found, `None` otherwise
         """
+        pass
+
+    @abstractmethod
+    async def reverse_search(self, IP: str):
         pass
 
     def _print_level(self, level):

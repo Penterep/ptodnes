@@ -1,8 +1,11 @@
+import argparse
 import asyncio
 import pathlib
+import re
 from argparse import ArgumentParser
 import sys
 import os
+import punycode
 
 import ptodnes.process
 import ptodnes.datasources
@@ -17,6 +20,27 @@ import importlib.metadata
 
 __version__ = importlib.metadata.version(__package__)
 __scriptname__ = os.path.basename(sys.argv[0])
+
+def domain(arg_value):
+    if arg_value.endswith('.'):
+        arg_value = arg_value[:-1]
+    try:
+        arg_value = punycode.convert(arg_value, True)
+    except:
+        pass
+    rgx = re.compile(r'^((?!-)[A-Za-z0-9-]{1,63}(?<!-)\.)+[A-Za-z]{2,6}$')
+    if not rgx.match(arg_value):
+        raise argparse.ArgumentTypeError("Invalid domain name")
+    return arg_value
+
+def ipv4(arg_value):
+    ip6 = re.compile(r"(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))")
+    if ip6.match(arg_value):
+        raise argparse.ArgumentTypeError("IPv6 not supported yet")
+    pattern = re.compile(r"^(((?!25?[6-9])[12]\d|[1-9])?\d\.?\b){4}$")
+    if not pattern.match(arg_value):
+        raise argparse.ArgumentTypeError("Invalid IPv4 address")
+    return arg_value
 
 
 def get_help():
@@ -68,8 +92,8 @@ async def main(loop):
                         "--domain",
                         help="domain to search for",
                         nargs='+',
-                        required=(('-l' not in sys.argv and '--list' not in sys.argv) and ('-i' not in sys.argv and '--ip-address' not in sys.argv)),
-                        type=str)
+                        required=(('-l' not in sys.argv and '--list' not in sys.argv) and ('-ip' not in sys.argv and '--ip-address' not in sys.argv)),
+                        type=domain)
     parser.add_argument("-D",
                         "--datasource",
                         nargs='+',
@@ -89,7 +113,7 @@ async def main(loop):
                         choices=['ANY', 'A', 'AAAA', 'CNAME', 'MX', 'NAPTR', 'NS', 'PTR', 'SOA', 'SRV', 'TXT',],
                         default=["ANY"],
                         type=str)
-    parser.add_argument("-ip", "--ip-address", help="ip for reverse lookup", type=str, nargs='+', metavar="IP")
+    parser.add_argument("-ip", "--ip-address", help="ip for reverse lookup", type=ipv4, nargs='+', metavar="IP")
     parser.add_argument("-o", "--output", help="save results to files", type=str)
     parser.add_argument("-n", "--nonxdomain", help="disable output of NXDOMAIN", action="store_true", default=False)
     parser.add_argument("-V", "--verbose", help="verbosity level (1=ERROR, 2=WARNING, 3=INFO, 4=DEBUG)", type=int, default=3)

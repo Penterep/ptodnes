@@ -15,6 +15,7 @@ class Wordlist(Datasource):
     def __init__(self, api_key: str = ''):
         super().__init__()
         wordlists_cfg = self.config.get("wordlists", [])
+        self._enabled = self.config.get('enabled', True)
         if type(wordlists_cfg) is type(''):
             self.__wordlists = [wordlists_cfg]
         else:
@@ -23,7 +24,12 @@ class Wordlist(Datasource):
     async def check_api_key(self):
         pass
 
+    def add_api_key(self, api_key: str = None):
+        pass
+
     async def search(self, domain: str):
+        if not self._enabled:
+            return []
         if self._wordlists:
             self.__wordlists = self._wordlists
         self.print_info("Started wordlist search")
@@ -64,6 +70,12 @@ class Wordlist(Datasource):
         res.filter_untrusted()
 
         return res.as_list()
+
+    async def reverse_search(self, IP: str):
+        if not self._enabled:
+            return []
+        self.print_warning("IP address lookup is not supported.")
+        return []
 
     async def read_wordlist(self):
         for wordlist in self.__wordlists:
