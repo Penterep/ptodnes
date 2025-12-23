@@ -51,10 +51,10 @@ async def process(loop: asyncio.AbstractEventLoop,
 
     ptprint(out_if(f"Load datasource modules", "INFO", silent, colortext=True))
     if '_' in datasource:
-        ptodnes.datasources.load_datasource(None)
+        ptodnes.datasources.load_datasource(None, silent)
     else:
         for selected_datasource in datasource:
-            ptodnes.datasources.load_datasource(selected_datasource)
+            ptodnes.datasources.load_datasource(selected_datasource, silent)
     for datasource_instance in ptodnes.datasources.datasources.values():
         datasource_instance.on_load()
     print()

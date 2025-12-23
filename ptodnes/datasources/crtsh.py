@@ -50,7 +50,7 @@ class CRTsh(Datasource):
                                             if not rgx.match(subdomain):
                                                 continue
                                             self.print_ok(f"Found subdomain: {subdomain}")
-                                            datasource_object = DatasourceObject(domain=subdomain, DNSData=[DNSRecordGenerator(source=self.__class__.__name__, type='<NONE>', verified=False, value="<EMPTY>", ttl=None, record_last_seen=None)])
+                                            datasource_object = DatasourceObject(domain=subdomain, DNSData=[DNSRecordGenerator(source=self.__class__.__name__, type=None, verified=False, value=None, ttl=None, record_last_seen=None)])
                                             datasource_objects.append(datasource_object)
                                             ret.append(subdomain)
                                     else:
@@ -59,12 +59,12 @@ class CRTsh(Datasource):
                                             if not rgx.match(subdomain):
                                                 continue
                                             self.print_ok(f"Found subdomain: {subdomain}")
-                                            datasource_object = DatasourceObject(domain=subdomain, DNSData=[DNSRecordGenerator(source=self.__class__.__name__, type='<NONE>', verified=False, value="<EMPTY>", ttl=None, record_last_seen=None)])
+                                            datasource_object = DatasourceObject(domain=subdomain, DNSData=[DNSRecordGenerator(source=self.__class__.__name__, type=None, verified=False, value=None, ttl=None, record_last_seen=None)])
                                             datasource_objects.append(datasource_object)
                                             ret.append(subdomain)
                                 if domain not in ret:
                                     ret.append(domain)
-                                    datasource_objects.append(DatasourceObject(domain=domain, DNSData=[DNSRecordGenerator(source=self.__class__.__name__, type='<NONE>', verified=False, value="<EMPTY>", ttl=None, record_last_seen=None)]))
+                                    datasource_objects.append(DatasourceObject(domain=domain, DNSData=[DNSRecordGenerator(source=self.__class__.__name__, type=None, verified=False, value=None, ttl=None, record_last_seen=None)]))
                         self.print_info(f"Finished search for domain {domain}")
                         pool.close()
                         await pool.wait_closed()

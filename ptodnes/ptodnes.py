@@ -114,20 +114,23 @@ async def main(loop):
                         default=["ANY"],
                         type=str)
     parser.add_argument("-ip", "--ip-address", help="ip for reverse lookup", type=ipv4, nargs='+', metavar="IP")
-    parser.add_argument("-o", "--output", help="save results to files", type=str)
     parser.add_argument("-n", "--nonxdomain", help="disable output of NXDOMAIN", action="store_true", default=False)
     parser.add_argument("-V", "--verbose", help="verbosity level (1=ERROR, 2=WARNING, 3=INFO, 4=DEBUG)", type=int, default=3)
     parser.add_argument("-v", "--version", help="print version and exit", action="store_true", default=False)
-    parser.add_argument("-vv", "--very-verbose", help="set very verbose mode", action="store_true", default=False)
     parser.add_argument("-r", "--retry", help="number of attempts", default=5, type=int)
     parser.add_argument("-T", "--timeout", help="timeout (in seconds)", default=5, type=int)
     parser.add_argument("-q", "--query", help="query domains against DNS servers", action="store_true", default=False, required=('-e' in sys.argv or '--exclude-unverified' in sys.argv))
     parser.add_argument("-e", "--exclude-unverified", help="exclude unverified records", action="store_true", default=False)
+
     format_parser = parser.add_mutually_exclusive_group(required=('-o' in sys.argv or '--output' in sys.argv))
     format_parser.add_argument("-y", "--yaml", help="output in YAML format", action="store_const", const="yaml", dest="format")
     format_parser.add_argument("-c", "--csv", help="output in CSV format", action="store_const", const="csv", dest="format")
     format_parser.add_argument("-j", "--json", help="output in ptJSONlib format", action="store_const", const="ptjson",
                                dest="format")
+
+    output = parser.add_mutually_exclusive_group()
+    output.add_argument("-o", "--output", help="save results to files", type=str)
+    output.add_argument("-vv", "--very-verbose", help="set very verbose mode", action="store_true", default=False)
 
     if len(sys.argv) == 1 or '-h' in sys.argv or '--help' in sys.argv:
         help_print(get_help(), __scriptname__, __version__)
@@ -152,7 +155,7 @@ async def main(loop):
     if result is None:
         exit(1)
 
-    output = dataexporter.convert(result, args.format)
+    output = dataexporter.convert(result, args.format, very_verbose=args.very_verbose)
 
     if args.output is None:
         ptprint(output)

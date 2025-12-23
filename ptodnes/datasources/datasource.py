@@ -88,6 +88,7 @@ class Datasource(metaclass=ABCMeta):
     """
 
     loaded_datasource: dict[str, Self] = {}
+    verbose: bool = True
     @property
     def config(self):
         return ConfigProvider().get_config(self.__class__.__name__)
@@ -129,7 +130,7 @@ class Datasource(metaclass=ABCMeta):
     def __init__(self, **kwargs):
         self._wordlists: Optional[list] = None
         self._api_url: Optional[str]
-        self._verbose: bool = True
+        self._verbose: bool = Datasource.verbose
         self._verbose_level: int = 3
         self._timeout: int = 5
         self._retry: int = 5

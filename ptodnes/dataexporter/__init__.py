@@ -80,4 +80,10 @@ def convert(domain_data: DNSRecordDict, output_format: str, separator=';', very_
             output += out_if("Summary\n", bullet_type='INFO', colortext=True, condition=True)
             for domain, records in domain_data.items():
                 output += out_if(f"{domain}\n", bullet_type='TEXT', colortext=False, condition=True)
+                if very_verbose:
+                    for record in records:
+                        output += out_if(f"Last seen: {record.record_last_seen.date() or "Unknown"}, \
+Verified: {"Yes" if record.verified else "No"}, Type: {record.type or 'Unknown'}, \
+Value: {record.value or 'Unknown'}\n",
+                                         bullet_type='ADDITIONS', colortext=True, condition=very_verbose, indent=2)
     return output

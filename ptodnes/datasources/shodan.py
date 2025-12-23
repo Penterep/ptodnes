@@ -100,7 +100,7 @@ class Shodan(Datasource):
                             datasource_objects.append(datasource_object)
                         if more_data:
                             self.print_warning(f"More results available for {domain}. \
-                            Current API level does not support more results.")
+Current API level does not support more results.")
                 if domain not in domain_list:
                     domain_list.append(domain)
                 # return list(set(domain_list))
