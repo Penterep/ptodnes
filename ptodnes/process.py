@@ -48,6 +48,9 @@ async def process(loop: asyncio.AbstractEventLoop,
     silent = True
     if format: silent = False
 
+    odnesdns = OdnesDNS()
+    odnesdns.set_loop(loop)
+
 
     ptprint(out_if(f"Load datasource modules", "INFO", silent, colortext=True))
     if '_' in datasource:
@@ -111,7 +114,6 @@ async def process(loop: asyncio.AbstractEventLoop,
         res.extend(merged)
 
         if query:
-            odnesdns = OdnesDNS(loop)
             qtypes = type.copy()
             if "ANY" in type:
                 qtypes = ['A', 'AAAA', 'CNAME', 'MX', 'NAPTR', 'NS', 'PTR', 'SOA', 'SRV', 'TXT',]

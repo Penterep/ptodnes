@@ -5,7 +5,7 @@ from typing import overload, Self, Any, Optional
 
 from ptlibs.ptprinthelper import out_if, ptprint
 
-from ptodnes.DNS.record import DNSRecord, SOARecord, MXRecord, CAARecord
+from ptodnes.DNS.record import DNSRecord, SOARecord, MXRecord, CAARecord, SRVRecord
 from ptodnes.configprovider.configprovider import ConfigProvider
 
 
@@ -54,6 +54,8 @@ class DNSRecordGenerator:
                 return MXRecord(verified = verified, **kwargs)
             case 'CAA':
                 return CAARecord(verified = verified, **kwargs)
+            case 'SRV':
+                return SRVRecord(verified = verified, **kwargs)
             case _:
                 return DNSRecord(verified = verified, **kwargs)
 

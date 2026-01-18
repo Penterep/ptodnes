@@ -33,8 +33,7 @@ class Wordlist(Datasource):
         if self._wordlists:
             self.__wordlists = self._wordlists
         self.print_info("Started wordlist search")
-        loop = asyncio.get_event_loop()
-        dns = OdnesDNS(loop)
+        dns = OdnesDNS()
         datasource_objects = []
         rgx = re.compile(r'^((?!-)[A-Za-z0-9-]{1,63}(?<!-)\.)+[A-Za-z]{2,6}$')
         async for sub in self.read_wordlist():
@@ -62,7 +61,7 @@ class Wordlist(Datasource):
 
         qtasks = []
         for qtype in qtypes:
-            task = loop.create_task(dns.query(res, qtype=qtype, print_func=self.print_info))
+            task = dns.get_loop().create_task(dns.query(res, qtype=qtype, print_func=self.print_info))
             qtasks.append(task)
         await asyncio.gather(*qtasks)
         if self._verbose:

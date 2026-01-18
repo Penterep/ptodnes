@@ -69,3 +69,9 @@ class CAARecord(DNSRecord):
 
     def __hash__(self):
         return super().__hash__()
+
+@dataclass
+class SRVRecord(DNSRecord):
+    priority: int = 0
+    weight: int = 0
+    port: int = None

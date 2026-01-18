@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ptodnes"
-version = "1.11.4"
+version = "1.11.5"
 description = ""
 authors = ["Ondrej Dohnal <xdohna45@vutbr.cz>"]
 license = "MIT"
@@ -8,8 +8,8 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python  = ">3.11, <=3.15"
-aiodns  = "^3.2.0"
-aiohttp = "^3.11.13"
+aiodns  = "^4.0.0"
+aiohttp = "3.13.3"
 aiopg   = "^1.4.0"
 pyyaml  = "^6.0.2"
 ptlibs  = "^1.0.17"
