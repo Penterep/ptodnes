@@ -13,17 +13,19 @@ class Shodan(Datasource):
         self.__api_keys = self.config.get('api_keys', [])
         self._enabled = self.config.get('enabled', True)
         if not self.__api_keys:
-            self._api_key = ''
-        if type(self.__api_keys) is not type(list):
-            self._api_key = ''
-        self.__api_keys = iter(self.__api_keys)
-        try:
-            self._api_key = next(self.__api_keys)
-        except StopIteration:
-            self._api_key = ''
+            self._api_key = api_key
+        if type(self.__api_keys) is not type([]):
+            self._api_key = api_key
+        else:
+            try:
+                self._api_key = self.__api_keys.pop(0)
+            except IndexError:
+                self._api_key = api_key
 
     def add_api_key(self, api_key: str):
         self.__api_keys.append(api_key)
+        if not self._api_key:
+            self._api_key = api_key
 
     async def check_api_key(self):
         if not self._api_key:

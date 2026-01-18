@@ -9,21 +9,22 @@ class VirusTotal(Datasource):
     _ips_url: str = "https://www.virustotal.com/api/v3/ip_addresses/{IP}/resolutions?limit=40"
     def __init__(self, api_key: str = ''):
         super().__init__()
-        self.__api_keys_list = self.config.get('api_keys', [])
+        self.__api_keys = self.config.get('api_keys', [])
         self._enabled = self.config.get('enabled', True)
-        if not self.__api_keys_list:
+        if not self.__api_keys:
             self._api_key = api_key
-        if type(self.__api_keys_list) is not type(list):
+        if type(self.__api_keys) is not type([]):
             self._api_key = api_key
-        self.__api_keys = iter(self.__api_keys_list)
-        try:
-            self._api_key = next(self.__api_keys)
-        except StopIteration:
-            self._api_key = api_key
+        else:
+            try:
+                self._api_key = self.__api_keys.pop(0)
+            except IndexError:
+                self._api_key = api_key
 
     def add_api_key(self, api_key: str):
-        print("Adding API key to VirusTotal")
-        self.__api_keys_list.append(api_key)
+        self.__api_keys.append(api_key)
+        if not self._api_key:
+            self._api_key = api_key
     
     async def check_api_key(self):
         if not self._api_key:
@@ -74,7 +75,7 @@ class VirusTotal(Datasource):
                                 self.print_error(
                                     (await response.json()).get('error', {}).get('message', "Unspecified error."))
                                 if response.status == 429:
-                                    self._api_key = next(self.__api_keys)
+                                    self._api_key = self.__api_keys.pop(0)
                                     headers = {"accept": "application/json", "x-apikey": self._api_key}
                                     continue
                                 return domain_list
@@ -126,7 +127,7 @@ class VirusTotal(Datasource):
                                 self.print_error(
                                     (await response.json()).get('error', {}).get('message', "Unspecified error."))
                                 if response.status == 429:
-                                    self._api_key = next(self.__api_keys)
+                                    self._api_key = self.__api_keys.pop(0)
                                     headers = {"accept": "application/json", "x-apikey": self._api_key}
                                     continue
                                 return domain_list
