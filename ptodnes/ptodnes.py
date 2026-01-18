@@ -42,7 +42,6 @@ def ipv4(arg_value):
         raise argparse.ArgumentTypeError("Invalid IPv4 address")
     return arg_value
 
-
 def get_help():
     return [
         {"description": ["DNS Enumeration Tool"]},
