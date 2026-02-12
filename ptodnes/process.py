@@ -7,6 +7,7 @@ from ptodnes.DNS.dns_record_dict import DNSRecordDict
 import re
 from ptlibs.ptprinthelper import out_if, ptprint
 import punycode
+from ptodnes.factchecker.factchecker import VhostFactChecker
 
 
 async def process(loop: asyncio.AbstractEventLoop,
@@ -19,6 +20,7 @@ async def process(loop: asyncio.AbstractEventLoop,
                   config:str=None,
                   type:list=None,
                   ip_address:list=None,
+                  web_apps:bool=False,
                   output:str=None,
                   nonxdomain:bool=False,
                   verbose:int=3,
@@ -112,6 +114,22 @@ async def process(loop: asyncio.AbstractEventLoop,
         res = DNSRecordDict()
 
         res.extend(merged)
+
+        # If requested, detect web applications (vhosts) on provided IPs.
+        # This is currently implemented only for combination with -ip.
+        if web_apps and ip_address:
+            # domains to test are all domains we discovered
+            qtypes = ["A"]
+            qtasks = []
+            for qtype in qtypes:
+                task = loop.create_task(odnesdns.query(res, qtype=qtype))
+                qtasks.append(task)
+            await asyncio.gather(*qtasks)
+            for ip in ip_address:
+                checker = await VhostFactChecker.create(ip, timeout=timeout)
+                for domain, info in res.items():
+                    await checker.find_vhosts(info)
+            return res
 
         if query:
             qtypes = type.copy()

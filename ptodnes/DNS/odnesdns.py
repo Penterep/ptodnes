@@ -112,7 +112,7 @@ class OdnesDNS(metaclass=Singleton):
         """
         tasks = []
         for domain, info in domain_list.items():
-            task = asyncio.create_task(self.query_one(domain, info, qtype, print_func=print_func))
+            task = asyncio.create_task(self.query_one(domain, info.records, qtype, print_func=print_func))
             tasks.append(task)
         await asyncio.gather(*tasks)
 

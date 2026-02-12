@@ -1,10 +1,11 @@
 from typing import Generator, List
 
+from ptodnes.DNS.dnsinfo import DNSInfo
 from ptodnes.DNS.record import DNSRecord
 from ptodnes.datasources.datasource import DatasourceObject
 
 
-class DNSRecordDict(dict[str, list[DNSRecord]]):
+class DNSRecordDict(dict[str, DNSInfo]):
     """
     DNS Records dictionary
     """
@@ -15,15 +16,52 @@ class DNSRecordDict(dict[str, list[DNSRecord]]):
         :return:
         """
         if item not in self.keys():
-            self[item.domain] = list(set(item.DNSData))
+            self[item.domain] = DNSInfo(domain=item.domain, records=list(set(item.DNSData)))
         else:
             for obj in item.DNSData:
-                if obj not in self[item.domain]:
-                    self[item.domain].append(obj)
+                if obj not in self[item.domain].records:
+                    self[item.domain].records.append(obj)
                 else:
-                    for i in range(len(self[item.domain])):
-                        if self[item.domain][i] == obj:
-                            self[item.domain][i].source.update(obj.source)
+                    for i in range(len(self[item.domain].records)):
+                        if self[item.domain].records[i] == obj:
+                            self[item.domain].records[i].source.update(obj.source)
+    def get_records(self, domain: str) -> list[DNSRecord] | None:
+        """
+        Get DNS records for a domain
+        :param domain: domain to get records for
+        :return: list of DNS records or None if domain not found
+        """
+        dns_info = self.get(domain, None)
+        if dns_info is None:
+            return []
+        return dns_info.records
+    
+    def is_vhost(self, domain: str) -> bool:
+        """
+        Check if domain is a vhost
+        :param domain: domain to check
+        :return: True if domain is a vhost, False otherwise
+        """
+        dns_info = self.get(domain, None)
+        if dns_info is None:
+            return False
+        return dns_info.is_vhost
+    
+    def set_vhost_info(self, domain: str, is_vhost: bool, vhost_hits: list[str] | None):
+        """
+        Set vhost information for a domain
+        :param domain: domain to set vhost information for
+        :param is_vhost: True if domain is a vhost, False otherwise
+        :param vhost_hits: list of vhost hits or None if no hits
+        :return:
+        """
+        dns_info = self.get(domain, None)
+        if dns_info is None:
+            self[domain] = DNSInfo(is_vhost=is_vhost, vhost_hits=vhost_hits, records=[])
+        else:
+            dns_info.is_vhost = is_vhost
+            dns_info.vhost_hits = vhost_hits
+        
 
     def extend(self, items: list[DatasourceObject]):
         """
@@ -45,10 +83,10 @@ class DNSRecordDict(dict[str, list[DNSRecord]]):
             return
         self.filterNX()
         for key, value in self.items():
-            filtered = [x for x in filter((lambda i: i.type in filter_types), value)]
+            filtered = [x for x in filter((lambda i: i.type in filter_types), value.records)]
             if not filtered:
                 keys.append(key)
-            self[key] = filtered
+            self[key].records = filtered
         for key in keys:
             del (self[key])
 
@@ -59,10 +97,10 @@ class DNSRecordDict(dict[str, list[DNSRecord]]):
         """
         keys = []
         for key, value in self.items():
-            filtered = [x for x in filter((lambda i: i.verified), value)]
+            filtered = [x for x in filter((lambda i: i.verified), value.records)]
             if not filtered:
                 keys.append(key)
-            self[key] = filtered
+            self[key].records = filtered
         for key in keys:
             del (self[key])
 
@@ -75,9 +113,9 @@ class DNSRecordDict(dict[str, list[DNSRecord]]):
         keys = []
         for key, value in self.items():
 
-            while DNSRecord('<NONE>',0,'<EMPTY>',False, {''}, None) in value:
-                value.remove(DNSRecord('<NONE>',0,'<EMPTY>',False, {''}, None))
-            if not value:
+            while DNSRecord('<NONE>',0,'<EMPTY>',False, {''}, None) in value.records:
+                value.records.remove(DNSRecord('<NONE>',0,'<EMPTY>',False, {''}, None))
+            if not value.records:
                 keys.append(key)
 
         for key in keys:

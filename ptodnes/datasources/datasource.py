@@ -5,6 +5,7 @@ from typing import overload, Self, Any, Optional
 
 from ptlibs.ptprinthelper import out_if, ptprint
 
+from ptodnes.DNS.dnsinfo import DNSInfo
 from ptodnes.DNS.record import DNSRecord, SOARecord, MXRecord, CAARecord, SRVRecord
 from ptodnes.configprovider.configprovider import ConfigProvider
 

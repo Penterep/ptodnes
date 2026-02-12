@@ -24,6 +24,8 @@ class DNSRecord:
 
     def __hash__(self):
         return hash((self.type, self.value))
+    
+
 
 @dataclass
 class SOARecord(DNSRecord):

@@ -65,6 +65,7 @@ def get_help():
             ["-D", "--datasource", "<datasource ...>", "Datasources to browse"],
             ["-e", "--exclude-unverified", "", "Exclude unverified records"],
             ["-ip", "--ip-address", "<ip address ...>", "IP to search for"],
+            ["-wa", "--web-apps", "", "Detect web applications (vhosts) on provided IPs (use with -ip)"],
             ["-j", "--json", "", "Output in JSON format"],
             ["-l", "--list", "", "List available datasources"],
             ["-n", "--nonxdomain", "", "Filter results with no DNS data"],
@@ -113,6 +114,7 @@ async def main(loop):
                         default=["ANY"],
                         type=str)
     parser.add_argument("-ip", "--ip-address", help="ip for reverse lookup", type=ipv4, nargs='+', metavar="IP")
+    parser.add_argument("-wa", "--web-apps", help="detect web applications (vhosts) on provided IPs", action="store_true", default=False)
     parser.add_argument("-n", "--nonxdomain", help="disable output of NXDOMAIN", action="store_true", default=False)
     parser.add_argument("-V", "--verbose", help="verbosity level (1=ERROR, 2=WARNING, 3=INFO, 4=DEBUG)", type=int, default=3)
     parser.add_argument("-v", "--version", help="print version and exit", action="store_true", default=False)
@@ -139,6 +141,8 @@ async def main(loop):
         exit(0)
     args = parser.parse_args()
 
+        
+
     do_help = not (not args.silent or args.format)
     if do_help:
         print_banner(__scriptname__, __version__)
@@ -147,6 +151,21 @@ async def main(loop):
         exit(0)
     if args.config:
         ConfigProvider().config_file = pathlib.Path(args.config)
+
+    if args.domain and args.ip_address:
+        if len(args.domain) > 1 and len(args.ip_address) > 1:
+            parser.error("When both domains and IPs are provided, only one of each is allowed!")
+        dns = OdnesDNS()
+        dns.set_loop(loop)
+        tasks = []
+        for dom in args.domain:
+            domain_data = []
+            task = loop.create_task(dns.query_one(dom, domain_data, qtype='A'))
+            tasks.append(task)
+        await asyncio.gather(*tasks)
+        for ip in args.ip_address:
+            pass
+        exit(0)
 
     result = await ptodnes.process.process(loop, **args.__dict__)
 

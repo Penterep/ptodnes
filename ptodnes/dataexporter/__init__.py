@@ -81,6 +81,12 @@ def convert(domain_data: DNSRecordDict, output_format: str, separator=';', very_
             for domain, records in domain_data.items():
                 output += out_if(f"{domain}\n", bullet_type='TEXT', colortext=False, condition=True)
                 if very_verbose:
+                    output += out_if(f"Vhost found!\n",
+                                         bullet_type='WARNING', colortext=True, condition=records.is_vhost, indent=2)
+                    output += out_if(f"Vulnerabilities: {', '.join(records.vhost_hits[0].vulnerabilities) if records.vhost_hits else None}\n",
+                                         bullet_type='VULN', colortext=True, condition=records.is_vhost, indent=4)
+                    output += out_if(f"None\n",
+                                         bullet_type='OK', colortext=True, condition=records.is_vhost and len(records.vhost_hits[0].vulnerabilities) == 0, indent=6)
                     for record in records:
                         if record.type == 'A':
                             output += out_if(f"IP: {record.value or 'Unknown'}, Last seen: {record.record_last_seen.date() if record.record_last_seen else "Unknown"}, \
@@ -91,4 +97,5 @@ Verified: {"Yes" if record.verified else "No"}\n",
                                 f"CNAME of: {record.value or 'Unknown'}, Last seen: {record.record_last_seen.date() if record.record_last_seen else "Unknown"}, \
 Verified: {"Yes" if record.verified else "No"}\n",
                                 bullet_type='ADDITIONS', colortext=True, condition=very_verbose, indent=2)
+
     return output
