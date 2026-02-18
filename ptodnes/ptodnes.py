@@ -6,6 +6,7 @@ from argparse import ArgumentParser
 import sys
 import os
 import punycode
+import ipaddress
 
 import ptodnes.process
 import ptodnes.datasources
@@ -34,12 +35,13 @@ def domain(arg_value):
     return arg_value
 
 def ipv4(arg_value):
+
     ip6 = re.compile(r"(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))")
     if ip6.match(arg_value):
         raise argparse.ArgumentTypeError("IPv6 not supported yet")
-    pattern = re.compile(r"^(((?!25?[6-9])[12]\d|[1-9])?\d\.?\b){4}$")
+    pattern = re.compile(r"^(((?!25?[6-9])[12]\d|[1-9])?\d\.?\b){4}(\/(\d{1,2}))?$")
     if not pattern.match(arg_value):
-        raise argparse.ArgumentTypeError("Invalid IPv4 address")
+       raise argparse.ArgumentTypeError("Invalid IPv4 address or CIDR block")
     return arg_value
 
 def get_help():
@@ -120,6 +122,9 @@ async def main(loop):
     parser.add_argument("-v", "--version", help="print version and exit", action="store_true", default=False)
     parser.add_argument("-r", "--retry", help="number of attempts", default=5, type=int)
     parser.add_argument("-T", "--timeout", help="timeout (in seconds)", default=5, type=int)
+    file_group = parser.add_mutually_exclusive_group()
+    file_group.add_argument("-fi", "--file-ip", help="file containing IP addresses", type=str)
+    file_group.add_argument("-fd", "--file-domains", help="file containing domain names", type=str)
     parser.add_argument("-q", "--query", help="query domains against DNS servers", action="store_true", default=False, required=('-e' in sys.argv or '--exclude-unverified' in sys.argv))
     parser.add_argument("-e", "--exclude-unverified", help="exclude unverified records", action="store_true", default=False)
 
@@ -141,7 +146,7 @@ async def main(loop):
         exit(0)
     args = parser.parse_args()
 
-        
+
 
     do_help = not (not args.silent or args.format)
     if do_help:
@@ -151,21 +156,26 @@ async def main(loop):
         exit(0)
     if args.config:
         ConfigProvider().config_file = pathlib.Path(args.config)
+    
+    if args.ip_address:
+        ips = []
+        for ip in args.ip_address or []:
+            if '/' in ip:
+                try:
+                    addresses =ipaddress.IPv4Network(ip, strict=False).hosts()
+                    ips.extend(addresses)
+                except ipaddress.AddressValueError:
+                    parser.error(f"Invalid CIDR block: {ip}")
+            else:
+                try:
+                    address = ipaddress.IPv4Address(ip)
+                    if str(address) not in ips:
+                        ips.append(str(address))
+                except ipaddress.AddressValueError:
+                    parser.error(f"Invalid IP address: {ip}")
+        args.ip_address = ips
 
-    if args.domain and args.ip_address:
-        if len(args.domain) > 1 and len(args.ip_address) > 1:
-            parser.error("When both domains and IPs are provided, only one of each is allowed!")
-        dns = OdnesDNS()
-        dns.set_loop(loop)
-        tasks = []
-        for dom in args.domain:
-            domain_data = []
-            task = loop.create_task(dns.query_one(dom, domain_data, qtype='A'))
-            tasks.append(task)
-        await asyncio.gather(*tasks)
-        for ip in args.ip_address:
-            pass
-        exit(0)
+
 
     result = await ptodnes.process.process(loop, **args.__dict__)
 

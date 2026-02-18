@@ -1,5 +1,7 @@
 import asyncio
 
+from ptodnes.DNS.dnsinfo import DNSInfo
+from ptodnes.DNS.record import DNSRecord
 import ptodnes.datasources
 import ptodnes.dataexporter
 from ptodnes.DNS.odnesdns import OdnesDNS
@@ -52,6 +54,27 @@ async def process(loop: asyncio.AbstractEventLoop,
 
     odnesdns = OdnesDNS()
     odnesdns.set_loop(loop)
+
+    if domain and ip_address:
+        res = DNSRecordDict()
+        for dom in domain:
+            res[dom] = DNSInfo(domain=dom, records=[])
+        await odnesdns.query(res, qtype='A')
+        res.filterNX()
+        res.filter_untrusted()
+        for ip in ip_address:
+            baseline = DNSRecord(type='A', value=ip, source={'Baseline'}, verified=True, record_last_seen=None, ttl=None)
+            for domain, info in res.items():
+                if baseline in info.records:
+                    res[domain].matches = True
+        if web_apps:
+            for ip in ip_address:
+                checker = await VhostFactChecker.create(ip, timeout=timeout)
+                for domain, info in res.items():
+                    await checker.find_vhosts(info)
+        return res
+
+
 
 
     ptprint(out_if(f"Load datasource modules", "INFO", silent, colortext=True))

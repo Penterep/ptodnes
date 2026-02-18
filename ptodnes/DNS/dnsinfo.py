@@ -11,6 +11,7 @@ class DNSInfo:
     """
     domain: str
     is_vhost: bool = False
+    matches: bool | None = None
     vhost_hits: list | None = None
     records: list[DNSRecord] | None = None
 
