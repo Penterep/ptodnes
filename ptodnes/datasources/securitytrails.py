@@ -91,7 +91,7 @@ class SecurityTrails(Datasource):
                                     self.print_warning(f"Max pages reached {page}/{total_pages}, stopping. Consider API upgrade.")
                             for record in domain_data:
                                 subdomain = record.get('hostname', '')
-                                self.print_ok(f"Found subdomain {subdomain}")
+                                self.print_ok(f"Found subdomain {subdomain}", clear_to_eol=True, end='\r')
                                 datasource_object = DatasourceObject(domain=subdomain, DNSData=[DNSRecordGenerator(type='A', value=x, ttl=-1, source=__class__.__name__, record_last_seen=None) for x in record.get('ips',[])])
                                 domain_list.append(subdomain)
                                 datasource_objects.append(datasource_object)
@@ -152,7 +152,7 @@ class SecurityTrails(Datasource):
                                         f"Max pages reached {page}/{total_pages}, stopping. Consider API upgrade.")
                             for record in domain_data:
                                 subdomain = record.get('hostname', '')
-                                self.print_ok(f"Found subdomain {subdomain}")
+                                self.print_ok(f"Found subdomain {subdomain}", clear_to_eol=True, end='\r')
                                 datasource_object = DatasourceObject(domain=subdomain, DNSData=[
                                     DNSRecordGenerator(type='A', value=x, ttl=-1, source=__class__.__name__,
                                                        record_last_seen=None) for x in record.get('ips', [])])

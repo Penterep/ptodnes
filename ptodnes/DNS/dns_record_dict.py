@@ -1,8 +1,8 @@
-from typing import Generator, List
+from typing import Generator, List, Self
 
 from ptodnes.DNS.dnsinfo import DNSInfo
 from ptodnes.DNS.record import DNSRecord
-from ptodnes.datasources.datasource import DatasourceObject
+from ptodnes.datasources.datasource import Datasource, DatasourceObject
 
 
 class DNSRecordDict(dict[str, DNSInfo]):
@@ -71,6 +71,20 @@ class DNSRecordDict(dict[str, DNSInfo]):
         """
         for item in items:
             self.append(item)
+            
+    def by_datasource(self, datasource: Datasource) -> Self:
+        datasource_name = datasource.__class__.__name__
+        new = DNSRecordDict()
+        for domain,values in self.items():
+            for value in values.records:
+                if datasource_name in value.source:
+                    new[domain] = values
+                    break
+        return new
+            
+            
+                    
+        
     def filter(self, types: list):
         """
         Filter DNS records by type

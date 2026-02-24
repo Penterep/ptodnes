@@ -1,5 +1,6 @@
 from ptodnes.DNS.record import DNSRecord
 from ptodnes.DNS.dns_record_dict import DNSRecordDict
+import ptodnes.datasources
 from ptlibs import ptjsonlib, out_if
 import yaml
 import json
@@ -77,6 +78,12 @@ def convert(domain_data: DNSRecordDict, output_format: str, separator=';', very_
                         output += f"{' ' * 4}Source: {record.source}\n"
         case _:
             output = "\n"
+            output += "===== Results =====\n\n"
+            for datasource in ptodnes.datasources.datasources.values():
+                datasource_items = domain_data.by_datasource(datasource)
+                if datasource_items:
+                    output += out_if(f"{datasource.__class__.__name__}\n", bullet_type='INFO', colortext=True, condition=True)
+                    output += out_if(f"{'\n'.join([x for x in datasource_items.keys()])}\n\n", bullet_type='TEXT', colortext=False, condition=True)
             output += out_if("Summary\n", bullet_type='INFO', colortext=True, condition=True)
             for domain, records in domain_data.items():
                 output += out_if(f"{domain}\n", bullet_type='TEXT', colortext=False, condition=True)

@@ -93,7 +93,7 @@ class Shodan(Datasource):
                             record_list.append(modified_record)
                             subdomains[subdomain] = record_list
                         for subdomain, subdomain_data in subdomains.items():
-                            self.print_ok(f"Found subdomain {subdomain}")
+                            self.print_ok(f"Found subdomain {subdomain}", clear_to_eol=True, end='\r')
                             datasource_object = DatasourceObject(domain=subdomain,
                                                                  DNSData=[DNSRecordGenerator(
                                                                      verified=False, source=__class__.__name__, **x)
@@ -134,7 +134,7 @@ Current API level does not support more results.")
                         data = await response.json()
                         domain_data = data.get('hostnames', [])
                         for record in domain_data:
-                            self.print_ok(f"Found subdomain {record}")
+                            self.print_ok(f"Found subdomain {record}", clear_to_eol=True, end='\r')
                             datasource_object = DatasourceObject(domain=record,
                                                                  DNSData=[DNSRecordGenerator(verified=False,
                                                                                              source=__class__.__name__,

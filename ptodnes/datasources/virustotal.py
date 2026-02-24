@@ -84,7 +84,7 @@ class VirusTotal(Datasource):
                                 domain_data = data.get('data', [])
                                 for record in domain_data:
                                     subdomain = record.get('id', '')
-                                    self.print_ok(f"Found subdomain {subdomain}")
+                                    self.print_ok(f"Found subdomain {subdomain}", clear_to_eol=True, end='\r')
                                     datasource_object = DatasourceObject(domain=subdomain, DNSData=[DNSRecordGenerator(**x,source=__class__.__name__, record_last_seen=date_from_utc(record.get('attributes',{}).get('last_dns_records_date',None))) for x in record.get('attributes',{}).get('last_dns_records',[])])
                                     domain_list.append(subdomain)
                                     datasource_objects.append(datasource_object)
@@ -139,7 +139,7 @@ class VirusTotal(Datasource):
                                 domain_data = data.get('data', [])
                                 for record in domain_data:
                                     subdomain = record.get('attributes', {}).get('host_name', '')
-                                    self.print_ok(f"Found subdomain {subdomain}")
+                                    self.print_ok(f"Found subdomain {subdomain}", clear_to_eol=True, end='\r')
                                     datasource_object = DatasourceObject(domain=subdomain, DNSData=[DNSRecordGenerator(type="A",source=__class__.__name__,ttl=None,value=IP, record_last_seen=date_from_utc(record.get('attributes',{}).get('date',None)))])
                                     domain_list.append(subdomain)
                                     datasource_objects.append(datasource_object)

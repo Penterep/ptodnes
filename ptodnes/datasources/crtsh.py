@@ -49,7 +49,7 @@ class CRTsh(Datasource):
                                             subdomain = row[0][2:]
                                             if not rgx.match(subdomain):
                                                 continue
-                                            self.print_ok(f"Found subdomain: {subdomain}")
+                                            self.print_ok(f"Found subdomain: {subdomain}", clear_to_eol=True, end='\r')
                                             datasource_object = DatasourceObject(domain=subdomain, DNSData=[DNSRecordGenerator(source=self.__class__.__name__, type=None, verified=False, value=None, ttl=None, record_last_seen=None)])
                                             datasource_objects.append(datasource_object)
                                             ret.append(subdomain)
@@ -58,7 +58,7 @@ class CRTsh(Datasource):
                                             subdomain = row[0]
                                             if not rgx.match(subdomain):
                                                 continue
-                                            self.print_ok(f"Found subdomain: {subdomain}")
+                                            self.print_ok(f"Found subdomain: {subdomain}", clear_to_eol=True, end='\r')
                                             datasource_object = DatasourceObject(domain=subdomain, DNSData=[DNSRecordGenerator(source=self.__class__.__name__, type=None, verified=False, value=None, ttl=None, record_last_seen=None)])
                                             datasource_objects.append(datasource_object)
                                             ret.append(subdomain)
