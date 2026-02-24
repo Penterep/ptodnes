@@ -163,7 +163,7 @@ async def main(loop):
             if '/' in ip:
                 try:
                     addresses =ipaddress.IPv4Network(ip, strict=False).hosts()
-                    ips.extend(addresses)
+                    ips.extend([str(x) for x in addresses if x not in ips])
                 except ipaddress.AddressValueError:
                     parser.error(f"Invalid CIDR block: {ip}")
             else:

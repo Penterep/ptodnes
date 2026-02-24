@@ -106,6 +106,9 @@ class VirusTotal(Datasource):
             except TimeoutError:
                 self.print_warning(f"Timed out when fetching data for {domain}. Trying again. ({i + 1}/{self.retry})")
                 await asyncio.sleep(2)
+            except IndexError:
+                self.print_error(f"No more API keys available.")
+                return datasource_objects
         self.print_error(f"Max timeout reached for {domain}. SKIPPING.")
         return []
 
@@ -156,5 +159,8 @@ class VirusTotal(Datasource):
             except TimeoutError:
                 self.print_warning(f"Timed out when fetching data for IP {IP}. Trying again. ({i + 1}/{self.retry})")
                 await asyncio.sleep(2)
+            except IndexError:
+                self.print_error(f"No more API keys available.")
+                return datasource_objects
         self.print_error(f"Max timeout reached for IP {IP}. SKIPPING.")
         return []
