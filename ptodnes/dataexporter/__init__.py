@@ -61,7 +61,7 @@ def convert(domain_data: DNSRecordDict, output_format: str, separator=';', very_
                 for domain, info in domain_data.items():
                     if info.is_vhost:
                         is_actual = any(x.verified for x in info.records)
-                        vhost_node = ptjson.create_node_object('web_app',None, None, {'name':domain, 'availabilty': 'actual' if is_actual else 'historical'}, None, None, info.vulnerabilities)
+                        vhost_node = ptjson.create_node_object('web_app',None, None, {'name':domain, 'availability': 'actual' if is_actual else 'historical'}, None, None, info.vulnerabilities)
                         ptjson.add_node(vhost_node)
             else:
                 for domain, records in domain_data.items():

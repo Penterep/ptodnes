@@ -51,7 +51,6 @@ def get_help():
             ["-D", "--datasource", "<datasource ...>", "Datasources to browse"],
             ["-e", "--exclude-unverified", "", "Exclude unverified records"],
             ["-ip", "--ip-address", "<ip address ...>", "IP to search for"],
-            ["-wa", "--web-apps", "", "Detect web applications (vhosts) on provided IPs (use with -ip)"],
             ["-j", "--json", "", "Output in JSON format"],
             ["-l", "--list", "", "List available datasources"],
             ["-n", "--nonxdomain", "", "Filter results with no DNS data"],
@@ -64,6 +63,7 @@ def get_help():
             ["-V", "--verbose", "<1|2|3|4>", "Set verbosity level (1=ERROR, 2=WARNING, 3=INFO, 4=DEBUG)"],
             ["-vv", "--very-verbose", "", "Output more information"],
             ["-w", "--wordlist", "<wordlist ...>", "Path to wordlist(s) for wordlist search"],
+            ["-wa", "--web-apps", "", "Detect web applications (vhosts) on provided IPs (use with -ip)"],
             ["-y", "--yaml", "", "Output in YAML format"],
         ]
         }]

@@ -44,24 +44,27 @@ ptodnes -d example.com -D Wordlist -w /usr/share/wordlists/rockyou.txt
 
 ## Options
 ```
--c  --csv                                   Output in CSV format
--C  --config              <config>          Path to config file (default ~/ptodnes.toml)
--d  --domain              <domain ...>      Domains to search for
--D  --datasource          <datasource ...>  Datasources to browse
--e  --exclude-unverified                    Exclude unverified records
--j  --json                                  Output in JSON format
--l  --list                                  List available datasources
--n  --nonxdomain                            Filter results with no DNS data
--o  --output              <file_prefix>     Save results to files (format specification required)
--p  --ptjson                                Output in ptJSONlib format
--q  --query                                 Query domains against DNS servers
--r  --retry               <count>           Number of attempts (default:5)
--t  --type                <type ...>        Types of DNS records to search for
--T  --timeout             <timeout>         Datasource connection timeout (in seconds, default:5)
--v  --version                               Print version and exit
--V  --verbose             <1|2|3|4>         Set verbosity level (1=ERROR, 2=WARNING, 3=INFO, 4=DEBUG)
--w  --wordlist            <wordlist ...>    Path to wordlist(s) for wordlist search.
--y  --yaml                                  Output in YAML format
+-api --api                <module> <api_key>    Set API key for module
+-c  --csv                                       Output in CSV format
+-C  --config              <config>              Path to config file (default ~/ptodnes.toml)
+-d  --domain              <domain ...>          Domains to search for
+-D  --datasource          <datasource ...>      Datasources to browse
+-e  --exclude-unverified                        Exclude unverified records
+-j  --json                                      Output in JSON format
+-l  --list                                      List available datasources
+-n  --nonxdomain                                Filter results with no DNS data
+-o  --output              <file_prefix>         Save results to files (format specification required)
+-p  --ptjson                                    Output in ptJSONlib format
+-q  --query                                     Query domains against DNS servers
+-r  --retry               <count>               Number of attempts (default:5)
+-t  --type                <type ...>            Types of DNS records to search for
+-T  --timeout             <timeout>             Datasource connection timeout (in seconds, default:5)
+-v  --version                                   Print version and exit
+-vv --very-verbose                              Output more information
+-V  --verbose             <1|2|3|4>             Set verbosity level (1=ERROR, 2=WARNING, 3=INFO, 4=DEBUG)
+-w  --wordlist            <wordlist ...>        Path to wordlist(s) for wordlist search.
+-wa --web-apps                                  Detect web applications (vhosts) on provided IPs (use with -ip)
+-y  --yaml                                      Output in YAML format
 
 ```
 

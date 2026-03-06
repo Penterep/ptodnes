@@ -129,6 +129,7 @@ async def process(loop: asyncio.AbstractEventLoop,
                 raise e
                 ptprint(out_if(e, "ERROR", silent, colortext=True))
                 return DNSRecordDict()
+        
         res = DNSRecordDict()
         for dom in domain:
             res[dom] = DNSInfo(domain=dom, records=[])
