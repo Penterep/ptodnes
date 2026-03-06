@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ptodnes"
-version = "1.11.7.4"
+version = "1.11.7.9"
 description = ""
 authors = ["Ondrej Dohnal <xdohna45@vutbr.cz>"]
 license = "MIT"

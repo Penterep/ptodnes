@@ -14,7 +14,11 @@ import ptodnes.dataexporter
 from ptodnes import dataexporter
 from ptodnes.DNS.odnesdns import OdnesDNS
 from ptodnes.configprovider.configprovider import ConfigProvider
+from ptodnes.process import domain_parser as domain
+from ptodnes.process import ipv4
+
 from ptlibs.ptprinthelper import help_print, print_banner, ptprint
+
 import importlib.metadata
 
 
@@ -22,27 +26,7 @@ import importlib.metadata
 __version__ = importlib.metadata.version(__package__)
 __scriptname__ = os.path.basename(sys.argv[0])
 
-def domain(arg_value):
-    if arg_value.endswith('.'):
-        arg_value = arg_value[:-1]
-    try:
-        arg_value = punycode.convert(arg_value, True)
-    except:
-        pass
-    rgx = re.compile(r'^((?!-)[A-Za-z0-9-]{1,63}(?<!-)\.)+[A-Za-z]{2,6}$')
-    if not rgx.match(arg_value):
-        raise argparse.ArgumentTypeError("Invalid domain name")
-    return arg_value
 
-def ipv4(arg_value):
-
-    ip6 = re.compile(r"(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))")
-    if ip6.match(arg_value):
-        raise argparse.ArgumentTypeError("IPv6 not supported yet")
-    pattern = re.compile(r"^(((?!25?[6-9])[12]\d|[1-9])?\d\.?\b){4}(\/(\d{1,2}))?$")
-    if not pattern.match(arg_value):
-       raise argparse.ArgumentTypeError("Invalid IPv4 address or CIDR block")
-    return arg_value
 
 def get_help():
     return [
@@ -94,7 +78,7 @@ async def main(loop):
                         "--domain",
                         help="domain to search for",
                         nargs='+',
-                        required=(('-l' not in sys.argv and '--list' not in sys.argv) and ('-ip' not in sys.argv and '--ip-address' not in sys.argv)),
+                        required=(('-l' not in sys.argv and '--list' not in sys.argv) and ('-ip' not in sys.argv and '--ip-address' not in sys.argv) or ('-fi' in sys.argv or '--file-ip' in sys.argv )),
                         type=domain)
     parser.add_argument("-D",
                         "--datasource",
@@ -115,8 +99,8 @@ async def main(loop):
                         choices=['ANY', 'A', 'AAAA', 'CNAME', 'MX', 'NAPTR', 'NS', 'PTR', 'SOA', 'SRV', 'TXT',],
                         default=["ANY"],
                         type=str)
-    parser.add_argument("-ip", "--ip-address", help="ip for reverse lookup", type=ipv4, nargs='+', metavar="IP")
-    parser.add_argument("-wa", "--web-apps", help="detect web applications (vhosts) on provided IPs", action="store_true", default=False)
+    parser.add_argument("-ip", "--ip-address", help="ip for reverse lookup", type=ipv4, nargs='+', metavar="IP", required=('-fd' in sys.argv or '--file-domains' in sys.argv))
+    parser.add_argument("-wa", "--web-apps", help="detect web applications (vhosts) on provided IPs", action="store_true",required=('-p' in sys.argv or '--port' in sys.argv), default=False)
     parser.add_argument("-n", "--nonxdomain", help="disable output of NXDOMAIN", action="store_true", default=False)
     parser.add_argument("-V", "--verbose", help="verbosity level (1=ERROR, 2=WARNING, 3=INFO, 4=DEBUG)", type=int, default=3)
     parser.add_argument("-v", "--version", help="print version and exit", action="store_true", default=False)
@@ -127,6 +111,7 @@ async def main(loop):
     file_group.add_argument("-fd", "--file-domains", help="file containing domain names", type=str)
     parser.add_argument("-q", "--query", help="query domains against DNS servers", action="store_true", default=False, required=('-e' in sys.argv or '--exclude-unverified' in sys.argv))
     parser.add_argument("-e", "--exclude-unverified", help="exclude unverified records", action="store_true", default=False)
+    parser.add_argument("-p", "--port", help="specify port for webapps", nargs='+', metavar='PORT')
 
     format_parser = parser.add_mutually_exclusive_group(required=('-o' in sys.argv or '--output' in sys.argv))
     format_parser.add_argument("-y", "--yaml", help="output in YAML format", action="store_const", const="yaml", dest="format")
@@ -162,8 +147,12 @@ async def main(loop):
         for ip in args.ip_address or []:
             if '/' in ip:
                 try:
-                    addresses =ipaddress.IPv4Network(ip, strict=False).hosts()
-                    ips.extend([str(x) for x in addresses if x not in ips])
+                    addresses =ipaddress.IPv4Network(ip, strict=False)
+                    ips.extend([str(x) for x in addresses.hosts() if x not in ips])
+                    if str(addresses.network_address) not in ips:
+                        ips.append(str(addresses.network_address))
+                    if str(addresses.broadcast_address) not in ips:
+                        ips.append(str(addresses.broadcast_address))
                 except ipaddress.AddressValueError:
                     parser.error(f"Invalid CIDR block: {ip}")
             else:

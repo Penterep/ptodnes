@@ -8,7 +8,7 @@ from ptodnes.DNS.odnesdns import OdnesDNS
 from ptodnes.DNS.dns_record_dict import DNSRecordDict
 
 import punycode
-
+import os
 
 class Wordlist(Datasource):
 
@@ -79,8 +79,20 @@ class Wordlist(Datasource):
     async def read_wordlist(self):
         for wordlist in self.__wordlists:
             self.print_info(f"Reading wordlist {wordlist}")
-            async with aiofiles.open(wordlist, 'r') as wordlist_file:
-                async for line in wordlist_file:
-                    if line.endswith('\n'):
-                        line = line[:-1]
-                    yield line
+            try:
+                async with aiofiles.open(wordlist, 'r') as wordlist_file:
+                    async for line in wordlist_file:
+                        if line.endswith('\n'):
+                            line = line[:-1]
+                        yield line
+            except PermissionError:
+                self.print_error(f"Permissions denied for '{wordlist}'")
+                continue
+            except FileNotFoundError:
+                self.print_error(f"Domains file '{wordlist}' not found")
+                continue
+            except IsADirectoryError:
+                self.print_error(f"Domains file '{wordlist}' is not a file")
+                continue
+            except Exception as e:
+                self.print_error(e)

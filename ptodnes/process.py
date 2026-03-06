@@ -1,4 +1,9 @@
+import argparse
 import asyncio
+import aiofiles
+import re
+import os
+import punycode
 
 from ptodnes.DNS.dnsinfo import DNSInfo
 from ptodnes.DNS.record import DNSRecord
@@ -6,11 +11,31 @@ import ptodnes.datasources
 import ptodnes.dataexporter
 from ptodnes.DNS.odnesdns import OdnesDNS
 from ptodnes.DNS.dns_record_dict import DNSRecordDict
-import re
 from ptlibs.ptprinthelper import out_if, ptprint
-import punycode
 from ptodnes.factchecker.factchecker import VhostFactChecker
 
+
+def domain_parser(arg_value):
+    if arg_value.endswith('.'):
+        arg_value = arg_value[:-1]
+    try:
+        arg_value = punycode.convert(arg_value, True)
+    except:
+        pass
+    rgx = re.compile(r'^((?!-)[A-Za-z0-9-]{1,63}(?<!-)\.)+[A-Za-z]{2,6}$')
+    if not rgx.match(arg_value):
+        raise argparse.ArgumentTypeError("Invalid domain name")
+    return arg_value
+
+def ipv4(arg_value):
+
+    ip6 = re.compile(r"(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))")
+    if ip6.match(arg_value):
+        raise argparse.ArgumentTypeError("IPv6 not supported yet")
+    pattern = re.compile(r"^(((?!25?[6-9])[12]\d|[1-9])?\d\.?\b){4}(\/(\d{1,2}))?$")
+    if not pattern.match(arg_value):
+       raise argparse.ArgumentTypeError("Invalid IPv4 address or CIDR block")
+    return arg_value
 
 async def process(loop: asyncio.AbstractEventLoop,
                   /,
@@ -32,6 +57,8 @@ async def process(loop: asyncio.AbstractEventLoop,
                   query:bool=False,
                   exclude_unverified:bool=False,
                   format:str=None,
+                  file_domains:str=None,
+                  file_ip:str=None,
                   **kwargs,) -> DNSRecordDict | None:
 
     """
@@ -55,7 +82,53 @@ async def process(loop: asyncio.AbstractEventLoop,
     odnesdns = OdnesDNS()
     odnesdns.set_loop(loop)
 
-    if domain and ip_address:
+    if (domain or file_domains) and (ip_address or file_ip):
+        if file_domains:
+            if not domain:
+                domain = []
+            try:
+                async with aiofiles.open(file_domains) as fd:
+                    async for line in fd:
+                        if domain_parser(line) not in domain:
+                            try:
+                                domain.append(domain_parser(line))
+                            except argparse.ArgumentTypeError:
+                                continue
+            except PermissionError:
+                ptprint(out_if(f"Permissions denied for {file_domains}", "ERROR", silent, colortext=True))
+                return DNSRecordDict()
+            except FileNotFoundError:
+                ptprint(out_if(f"Domains file {file_domains} not found", "ERROR", silent, colortext=True))
+            except IsADirectoryError:
+                ptprint(out_if(f"Domains file {file_domains} is not a file", "ERROR", silent, colortext=True))
+                return DNSRecordDict()
+            except Exception as e:
+                ptprint(out_if(e, "ERROR", silent, colortext=True))
+                return DNSRecordDict()
+        if file_ip:
+            if not ip_address:
+                ip_address = []
+            try:
+                async with aiofiles.open(file_ip) as fi:
+                    async for line in fi:
+                        if ipv4(line) not in ip_address:
+                            try:
+                                ip_address.append(domain_parser(ipv4(line)))
+                                print(ip_address)
+                            except argparse.ArgumentTypeError:
+                                continue
+            except PermissionError:
+                ptprint(out_if(f"Permissions denied for {file_domains}", "ERROR", silent, colortext=True))
+                return DNSRecordDict()
+            except FileNotFoundError:
+                ptprint(out_if(f"Domains file {file_domains} not found", "ERROR", silent, colortext=True))
+            except IsADirectoryError:
+                ptprint(out_if(f"Domains file {file_domains} is not a file", "ERROR", silent, colortext=True))
+                return DNSRecordDict()
+            except Exception as e:
+                raise e
+                ptprint(out_if(e, "ERROR", silent, colortext=True))
+                return DNSRecordDict()
         res = DNSRecordDict()
         for dom in domain:
             res[dom] = DNSInfo(domain=dom, records=[])
