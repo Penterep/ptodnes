@@ -38,6 +38,10 @@ def get_help():
             f"{__scriptname__} -d example.com example.net",
             f"{__scriptname__} -d example.com -D VirusTotal CRTsh",
             f"{__scriptname__} -d example.com -j -o example -t A AAAA",
+            "",
+            f"{__scriptname__} -ip 203.0.113.26",
+            f"{__scriptname__} -ip 203.0.113.16 -wa -j",
+            f"{__scriptname__} -ip 203.0.113.12 -wa -vv"
         ]},
         {"Info": [
             "If no datasource set, all available will be used",
