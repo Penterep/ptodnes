@@ -40,6 +40,10 @@ ptodnes -d example.com example.net
 ptodnes -d example.com -D VirusTotal CRTsh
 ptodnes -d example.com -j -o example -t A AAAA
 ptodnes -d example.com -D Wordlist -w /usr/share/wordlists/rockyou.txt
+
+ptodnes -ip 203.0.113.26
+ptodnes -ip 203.0.113.16 -wa -j
+ptodnes -ip 203.0.113.12 -wa -vv
 ```
 
 ## Options
@@ -50,6 +54,7 @@ ptodnes -d example.com -D Wordlist -w /usr/share/wordlists/rockyou.txt
 -d  --domain              <domain ...>          Domains to search for
 -D  --datasource          <datasource ...>      Datasources to browse
 -e  --exclude-unverified                        Exclude unverified records
+-ip, --ip-address         <ip address ...>      IP to search for
 -j  --json                                      Output in JSON format
 -l  --list                                      List available datasources
 -n  --nonxdomain                                Filter results with no DNS data
