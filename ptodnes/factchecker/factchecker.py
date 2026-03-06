@@ -168,6 +168,8 @@ class VhostFactChecker:
                     vulns: List[str] = []
                     if record and not record.verified:
                         vulns.append("PTV-WEB-MISCONF-OLDVHOST")
+                        if "PTV-WEB-MISCONF-OLDVHOST" not in info.vulnerabilities:
+                            info.vulnerabilities.append("PTV-WEB-MISCONF-OLDVHOST")
                     hits.append(
                             VhostHit(
                                 scheme=scheme,

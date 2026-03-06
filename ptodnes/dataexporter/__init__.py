@@ -5,6 +5,7 @@ from ptlibs import ptjsonlib, out_if
 import yaml
 import json
 import dataclasses
+import sys
 
 def serializer(x):
     """
@@ -56,12 +57,19 @@ def convert(domain_data: DNSRecordDict, output_format: str, separator=';', very_
                     output += f"{domain}{separator * 5}\n"
         case 'ptjson':
             ptjson = ptjsonlib.PtJsonLib()
-            for domain, records in domain_data.items():
-                domain_node = ptjson.create_node_object('domain',None,None,{'name':domain})
-                ptjson.add_node(domain_node)
-                for record in records:
-                    record_node = ptjson.create_node_object('dns_record', 'domain', domain_node.get('key'), serializer(record))
-                    ptjson.add_node(record_node)
+            if '-wa' in sys.argv or '--web-apps' in sys.argv:
+                for domain, info in domain_data.items():
+                    if info.is_vhost:
+                        is_actual = any(x.verified for x in info.records)
+                        vhost_node = ptjson.create_node_object('web_app',None, None, {'name':domain, 'availabilty': 'actual' if is_actual else 'historical'}, None, None, info.vulnerabilities)
+                        ptjson.add_node(vhost_node)
+            else:
+                for domain, records in domain_data.items():
+                    domain_node = ptjson.create_node_object('domain',None,None,{'name':domain})
+                    ptjson.add_node(domain_node)
+                    for record in records:
+                        record_node = ptjson.create_node_object('dns_record', 'domain', domain_node.get('key'), serializer(record))
+                        ptjson.add_node(record_node)
             ptjson.set_status('finished')
             output = ptjson.get_result_json()
         case 'verbose':

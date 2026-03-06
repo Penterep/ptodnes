@@ -13,6 +13,7 @@ class DNSInfo:
     is_vhost: bool = False
     matches: bool | None = None
     vhost_hits: list | None = None
+    vulnerabilities: list | None = None
     records: list[DNSRecord] | None = None
 
     def __iter__(self):
