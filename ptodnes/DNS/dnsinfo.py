@@ -19,6 +19,12 @@ class DNSInfo:
     def __iter__(self):
         return iter(self.records)
     
+    def add_vuln(self, vuln):
+        if not self.vulnerabilities:
+            self.vulnerabilities = []
+        if vuln not in self.vulnerabilities:
+            self.vulnerabilities.append(vuln)
+    
     def append(self, record: DNSRecord):
         """
         Append DNS record to DNSInfo
