@@ -84,6 +84,10 @@ def convert(domain_data: DNSRecordDict, output_format: str, separator=';', very_
                 if datasource_items:
                     output += out_if(f"{datasource.__class__.__name__}\n", bullet_type='INFO', colortext=True, condition=True)
                     output += out_if(f"{'\n'.join([x for x in datasource_items.keys()])}\n\n", bullet_type='TEXT', colortext=False, condition=True)
+            if any(p.is_vhost for p in domain_data.values()):
+                output += out_if("Web Applications\n", bullet_type='INFO', colortext=True, condition=True)
+                for domain, info in domain_data.items():
+                    output += out_if(f"{domain}\n", bullet_type='TEXT', colortext=True, condition=info.is_vhost)
             output += out_if("Summary\n", bullet_type='INFO', colortext=True, condition=True)
             for domain, records in domain_data.items():
                 output += out_if(f"{domain}\n", bullet_type='TEXT', colortext=False, condition=True)
