@@ -6,34 +6,25 @@
 
 ## Installation
 
-1. Download latest release whl package from [releases](https://github.com/Penterep/ptodnes/releases/latest) page.
-2. Install the package using pip/pipx.
+- Using **ptmanager** (recommended)
 ```bash
-pipx install <path_to_downloaded_whl_file>
+ptmanager -ti ptodnes
 ```
 
-Example:
+- Using **pip**
 ```bash
-pipx install ~/Downloads/ptodnes-1.11.1-py3-none-any.whl
+pip install ptodnes
 ```
 
-## Adding to PATH
-If you're unable to invoke the script from your terminal, it's likely because it's not included in your PATH. You can resolve this issue by executing the following commands, depending on the shell you're using:
-
-For Bash Users
+- Using **pipx**
 ```bash
-echo "export PATH=\"`python3 -m site --user-base`/bin:\$PATH\"" >> ~/.bashrc
-source ~/.bashrc
+pipx install ptodnes
 ```
+When using pipx user environment must be configured as in [Development Installation](#-adding-to-path)
 
-For ZSH Users
-```bash
-echo "export PATH=\"`python3 -m site --user-base`/bin:\$PATH\"" >> ~/.zshrc
-source ~/.zshrc
-```
 
 ## Usage examples
-```
+```bash
 ptodnes -l
 ptodnes -d example.com
 ptodnes -d example.com example.net
@@ -110,6 +101,35 @@ aiohttp
 aiopg
 pyyaml
 ```
+
+## Development Installation
+
+1. Download latest release whl package from [releases](https://github.com/Penterep/ptodnes/releases/latest) page.
+2. Install the package using pip/pipx.
+```bash
+pipx install <path_to_downloaded_whl_file>
+```
+
+Example:
+```bash
+pipx install ~/Downloads/ptodnes-1.11.1-py3-none-any.whl
+```
+
+### Adding to PATH
+If you're unable to invoke the script from your terminal, it's likely because it's not included in your PATH. You can resolve this issue by executing the following commands, depending on the shell you're using:
+
+For Bash Users
+```bash
+echo "export PATH=\"`python3 -m site --user-base`/bin:\$PATH\"" >> ~/.bashrc
+source ~/.bashrc
+```
+
+For ZSH Users
+```bash
+echo "export PATH=\"`python3 -m site --user-base`/bin:\$PATH\"" >> ~/.zshrc
+source ~/.zshrc
+```
+
 
 ## License
 

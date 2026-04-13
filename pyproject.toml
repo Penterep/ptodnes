@@ -1,10 +1,32 @@
 [tool.poetry]
 name = "ptodnes"
 version = "1.11.8"
-description = ""
-authors = ["Ondrej Dohnal <xdohna45@vutbr.cz>"]
-license = "MIT"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: System Administrators",
+    "Topic :: Security",
+    "Topic :: System :: Networking",
+    "Topic :: System :: Networking :: Monitoring",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Programming Language :: Python :: 3",
+    "Operating System :: POSIX :: Linux",
+    "Environment :: Console",
+]
+keywords = ["network", "scanner", "osint", "security", "vulnerability-detection", "penetration-testing", "dns"]
 readme = "README.md"
+license = "GPLv3"
+authors = [
+    "Penterep <info@penterep.com>",
+    "Ondrej Dohnal <xodhna45@vutbr.cz>"
+]
+description = "OSINT Domain Name Enumeration System"
+
+[tool.poetry.urls]
+Homepage = "https://www.penterep.com"
+Source = "https://github.com/Penterep/ptodnes"
+"Bug Reports" = "https://github.com/Penterep/ptodnes/issues"
+
 
 [tool.poetry.dependencies]
 python  = ">3.11, <=3.15"
@@ -15,7 +37,6 @@ pyyaml  = "^6.0.0"
 ptlibs  = "^1.0.0"
 aiofiles = "^25.1.0"
 punycode = "^0.2.0"
-beautifulsoup4 = "^4.14.3"
 
 [tool.poetry.group.docs]
 optional = true
