@@ -20,7 +20,7 @@ pip install ptodnes
 ```bash
 pipx install ptodnes
 ```
-When using pipx user environment must be configured as in [Development Installation](#-adding-to-path)
+When using pipx user environment must be configured as in [Development Installation](#adding-to-path)
 
 
 ## Usage examples
