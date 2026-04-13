@@ -19,11 +19,9 @@ from ptodnes.process import ipv4
 
 from ptlibs.ptprinthelper import help_print, print_banner, ptprint
 
-import importlib.metadata
 
+from ptodnes._version import __version__
 
-
-__version__ = importlib.metadata.version(__package__)
 __scriptname__ = os.path.basename(sys.argv[0])
 
 
