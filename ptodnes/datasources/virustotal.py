@@ -49,6 +49,44 @@ class VirusTotal(Datasource):
                 await asyncio.sleep(2)
                 retry -= 1
 
+    async def __get_resolutions(self, domain: str):
+        headers = {"accept": "application/json", "x-apikey": self._api_key}
+        timeout = aiohttp.ClientTimeout(total=self.timeout)
+        datasource_objects = []
+        url = f"https://www.virustotal.com/api/v3/domains/{domain}/resolutions?limit=40"
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            while url is not None:
+                async with session.get(url, headers=headers) as response:
+                    if response.status != 200:
+                        async with self._lock:
+                            if self._enabled:
+                                self._enabled = False
+                                self.print_error(
+                            (await response.json()).get('error', {}).get('message', "Unspecified error."))
+                        if response.status == 429:
+                            self._api_key = self.__api_keys.pop(0)
+                            headers = {"accept": "application/json", "x-apikey": self._api_key}
+                            continue
+                        return datasource_objects
+                    data = await response.json()
+                    try:
+                        domain_data = data.get('data', [])
+                        dns_data = []
+                        for record in domain_data:
+                            ip = record.get('attributes', {}).get('ip_address', '')
+                            dns_data.append(DNSRecordGenerator(source=__class__.__name__, 
+                                record_last_seen=date_from_utc(record.get('attributes',{}).get('date',None)),
+                                type='A', value=ip, ttl=None, verified=False
+                                ))
+                        datasource_object = DatasourceObject(
+                            domain=domain,
+                            DNSData=dns_data)
+                        datasource_objects.append(datasource_object)
+                        url = data.get('links',{}).get('next', None)
+                    except Exception as e:
+                        self.print_error(f"Unspecified error: {e}")
+                        url = None
+        return datasource_objects
 
     async def search(self, domain: str):
         """
@@ -89,6 +127,8 @@ class VirusTotal(Datasource):
                                     datasource_object = DatasourceObject(domain=subdomain, DNSData=[DNSRecordGenerator(**x,source=__class__.__name__, record_last_seen=date_from_utc(record.get('attributes',{}).get('last_dns_records_date',None))) for x in record.get('attributes',{}).get('last_dns_records',[])])
                                     domain_list.append(subdomain)
                                     datasource_objects.append(datasource_object)
+                                    resolutions = await self.__get_resolutions(subdomain)
+                                    datasource_objects.extend(resolutions)
                                 next_url = data.get('links',{}).get('next', None)
                             except Exception as e:
                                 self.print_error(f"Unspecified error: {e}")
