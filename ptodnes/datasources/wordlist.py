@@ -73,7 +73,9 @@ class Wordlist(Datasource):
     async def reverse_search(self, IP: str):
         if not self._enabled:
             return []
-        self.print_warning("IP address lookup is not supported.")
+        if self._barier:
+            self.print_warning("IP address lookup is not supported.")
+            self._barier = False
         return []
 
     async def read_wordlist(self):
@@ -96,3 +98,4 @@ class Wordlist(Datasource):
                 continue
             except Exception as e:
                 self.print_error(e)
+                continue

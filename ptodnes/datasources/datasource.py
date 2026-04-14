@@ -139,7 +139,14 @@ class Datasource(metaclass=ABCMeta):
         self._retry: int = 5
         self._qtype: Optional[list] = None
         self._api_key: Optional[str] = None
+        self._scandidate: Optional[str] = None
         self._enabled: bool = True
+        self._barier = True
+        self._end_barier = True
+
+    @classmethod
+    def set_scandidate(cls, scandidate: str):
+        Datasource._scandidate = scandidate
 
     @abstractmethod
     def add_api_key(self, api_key: str):
@@ -149,6 +156,7 @@ class Datasource(metaclass=ABCMeta):
         super().__init_subclass__()
         instance = cls()
         Datasource.loaded_datasource[cls.__name__.lower()] = instance
+        cls.scandidate = property(lambda self: Datasource._scandidate)
 
     def on_load(self):
         self.print_ok("Datasource loaded")

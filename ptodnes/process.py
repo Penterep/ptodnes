@@ -8,7 +8,7 @@ import punycode
 from ptodnes.DNS.dnsinfo import DNSInfo
 from ptodnes.DNS.record import DNSRecord
 import ptodnes.datasources
-import ptodnes.dataexporter
+from ptodnes.datasources.datasource import Datasource
 from ptodnes.DNS.odnesdns import OdnesDNS
 from ptodnes.DNS.dns_record_dict import DNSRecordDict
 from ptlibs.ptprinthelper import out_if, ptprint
@@ -35,6 +35,7 @@ def ipv4(arg_value):
     pattern = re.compile(r"^(((?!25?[6-9])[12]\d|[1-9])?\d\.?\b){4}(\/(\d{1,2}))?$")
     if not pattern.match(arg_value):
        raise argparse.ArgumentTypeError("Invalid IPv4 address or CIDR block")
+    Datasource.set_scandidate(arg_value)
     return arg_value
 
 async def process(loop: asyncio.AbstractEventLoop,
@@ -216,16 +217,23 @@ async def process(loop: asyncio.AbstractEventLoop,
         # This is currently implemented only for combination with -ip.
         if web_apps and ip_address:
             # domains to test are all domains we discovered
-            qtypes = ["A"]
-            qtasks = []
-            for qtype in qtypes:
-                task = loop.create_task(odnesdns.query(res, qtype=qtype))
-                qtasks.append(task)
-            await asyncio.gather(*qtasks)
-            for ip in ip_address:
+            await odnesdns.query(res, qtype='A')
+            tasks = []
+            known_ips = set()
+            for record in [j for x in res.as_list() for j in x.DNSData if x.DNSData]:
+                if record.type == 'A':
+                    known_ips.add(record.value)
+            for ip in known_ips:
                 checker = await VhostFactChecker.create(ip, timeout=timeout)
                 for domain, info in res.items():
-                    await checker.find_vhosts(info)
+                    tasks.append(checker.find_vhosts(info))
+            await asyncio.gather(*tasks)
+            
+            if exclude_unverified:
+                res.filter_untrusted()
+
+            if nonxdomain:
+                res.filterNX()
             return res
 
         if query:
@@ -240,6 +248,7 @@ async def process(loop: asyncio.AbstractEventLoop,
             await asyncio.gather(*qtasks)
 
         res.filter(type)
+
 
         if exclude_unverified:
             res.filter_untrusted()

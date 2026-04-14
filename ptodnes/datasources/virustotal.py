@@ -20,6 +20,7 @@ class VirusTotal(Datasource):
                 self._api_key = self.__api_keys.pop(0)
             except IndexError:
                 self._api_key = api_key
+        self._lock = asyncio.Lock()
 
     def add_api_key(self, api_key: str):
         self.__api_keys.append(api_key)
@@ -116,7 +117,9 @@ class VirusTotal(Datasource):
         if not self._enabled:
             return []
         datasource_objects = []
-        self.print_info(f"Started search for IP {IP}")
+        if self._barier:
+            self.print_info(f"Started search for IP {self.scandidate}")
+            self._barier = False
         for i in range(self.retry):
             try:
                 domain_list = []
@@ -127,7 +130,10 @@ class VirusTotal(Datasource):
                     while next_url is not None:
                         async with session.get(next_url, headers=headers) as response:
                             if response.status != 200:
-                                self.print_error(
+                                async with self._lock:
+                                    if self._enabled:
+                                        self._enabled = False
+                                        self.print_error(
                                     (await response.json()).get('error', {}).get('message', "Unspecified error."))
                                 if response.status == 429:
                                     self._api_key = self.__api_keys.pop(0)
@@ -139,7 +145,6 @@ class VirusTotal(Datasource):
                                 domain_data = data.get('data', [])
                                 for record in domain_data:
                                     subdomain = record.get('attributes', {}).get('host_name', '')
-                                    self.print_ok(f"Found subdomain {subdomain}", clear_to_eol=True, end='\r')
                                     datasource_object = DatasourceObject(domain=subdomain, DNSData=[DNSRecordGenerator(type="A",source=__class__.__name__,ttl=None,value=IP, record_last_seen=date_from_utc(record.get('attributes',{}).get('date',None)))])
                                     domain_list.append(subdomain)
                                     datasource_objects.append(datasource_object)
@@ -148,19 +153,24 @@ class VirusTotal(Datasource):
                                 self.print_error(f"Unspecified error: {e}")
                                 next_url = None
                 #return list(set(domain_list))
-                self.print_info(f"Finished search for IP {IP}")
+                if self._end_barier:
+                    self.print_info(f"Finished search for IP {self.scandidate}")
+                    self._end_barier = False
                 return datasource_objects
             except asyncio.exceptions.CancelledError:
-                self.print_warning(f"{IP} lookup canceled.")
+                self.print_warning(f"{self.scandidate} lookup canceled.")
                 return datasource_objects
             except StopIteration:
                 self.print_error(f"Could not get more records from VirusTotal API.")
                 return datasource_objects
             except TimeoutError:
-                self.print_warning(f"Timed out when fetching data for IP {IP}. Trying again. ({i + 1}/{self.retry})")
+                self.print_warning(f"Timed out when fetching data for IP {self.scandidate}. Trying again. ({i + 1}/{self.retry})")
                 await asyncio.sleep(2)
             except IndexError:
-                self.print_error(f"No more API keys available.")
+                async with self._lock:
+                    if self._enabled:
+                        self.print_error(f"No more API keys available.")
+                    self._enabled = False
                 return datasource_objects
-        self.print_error(f"Max timeout reached for IP {IP}. SKIPPING.")
+        self.print_error(f"Max timeout reached for IP {self.scandidate}. SKIPPING.")
         return []

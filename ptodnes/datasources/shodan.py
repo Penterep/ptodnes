@@ -119,7 +119,9 @@ Current API level does not support more results.")
     async def reverse_search(self, IP: str):
         if not self._enabled:
             return []
-        self.print_info(f"Started search for IP {IP}")
+        if self._barier:
+            self.print_info(f"Started search for IP {self.scandidate}")
+            self._barier = False
         for i in range(self.retry):
             try:
                 domain_list = []
@@ -134,7 +136,6 @@ Current API level does not support more results.")
                         data = await response.json()
                         domain_data = data.get('hostnames', [])
                         for record in domain_data:
-                            self.print_ok(f"Found subdomain {record}", clear_to_eol=True, end='\r')
                             datasource_object = DatasourceObject(domain=record,
                                                                  DNSData=[DNSRecordGenerator(verified=False,
                                                                                              source=__class__.__name__,
@@ -145,12 +146,14 @@ Current API level does not support more results.")
                             domain_list.append(record)
                             datasource_objects.append(datasource_object)
                 # return list(set(domain_list))
-                self.print_info(f"Finished search for IP {IP}")
+                if self._end_barier:
+                    self.print_info(f"Finished search for IP {self.scandidate}")
+                    self._end_barier = False
                 return datasource_objects
             except asyncio.exceptions.CancelledError:
-                self.print_warning(f"IP {IP} lookup canceled.")
+                self.print_warning(f"IP {self.scandidate} lookup canceled.")
             except TimeoutError:
-                self.print_warning(f"Timed out when fetching data for IP {IP}. Trying again. ({i + 1}/{self.retry})")
+                self.print_warning(f"Timed out when fetching data for IP {self.scandidate}. Trying again. ({i + 1}/{self.retry})")
                 await asyncio.sleep(2)
-        self.print_error(f"Max timeout reached for IP {IP}. SKIPPING.")
+        self.print_error(f"Max timeout reached for IP {self.scandidate}. SKIPPING.")
         return []

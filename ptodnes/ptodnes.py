@@ -99,7 +99,7 @@ async def main(loop):
                         help="types of DNS records to search for",
                         metavar="TYPE",
                         choices=['ANY', 'A', 'AAAA', 'CNAME', 'MX', 'NAPTR', 'NS', 'PTR', 'SOA', 'SRV', 'TXT',],
-                        default=["ANY"],
+                        default=["A", "AAAA", "CNAME"],
                         type=str)
     parser.add_argument("-ip", "--ip-address", help="ip for reverse lookup", type=ipv4, nargs='+', metavar="IP", required=('-fd' in sys.argv or '--file-domains' in sys.argv))
     parser.add_argument("-wa", "--web-apps", help="detect web applications (vhosts) on provided IPs", action="store_true",required=('-p' in sys.argv or '--port' in sys.argv), default=False)

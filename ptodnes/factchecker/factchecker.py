@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from ptodnes.DNS.dns_record_dict import DNSRecordDict
 
 
-_TITLE_RE = re.compile(r"<title[^>]*>(.*?)</title>", re.IGNORECASE | re.DOTALL)
+_TITLE_RE = re.compile(r"<title[^>]*>(.*?)<\/title>", re.IGNORECASE | re.DOTALL)
 
 
 def _extract_title(html: str | None) -> str | None:
@@ -97,6 +97,7 @@ class VhostFactChecker:
         self._timeout = max(0, int(timeout))
         self._baseline_host = baseline_host
         self._schemes = []
+        self._mutex = asyncio.Semaphore(10)
     
     @classmethod
     async def create(cls, ip: str, *, timeout: int = 5, baseline_host: str = "www.example.com") -> Self:

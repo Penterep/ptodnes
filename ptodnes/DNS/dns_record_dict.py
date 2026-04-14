@@ -71,6 +71,18 @@ class DNSRecordDict(dict[str, DNSInfo]):
         """
         for item in items:
             self.append(item)
+
+    def by_ip(self, ip: str) -> Self:
+        record = DNSRecord(record_last_seen=None, type='A', value=ip, verified=False, source={''}, ttl=0)
+        new = DNSRecordDict()
+        for domain,values in self.items():
+            if record not in values:
+                continue
+            for value in values.records:
+                if value.type == 'A' and value.value == ip:
+                    new[domain] = values
+                    break
+        return new
             
     def by_datasource(self, datasource: Datasource) -> Self:
         datasource_name = datasource.__class__.__name__

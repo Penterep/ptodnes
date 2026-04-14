@@ -19,6 +19,7 @@ class SecurityTrails(Datasource):
                 self._api_key = self.__api_keys.pop(0)
             except IndexError:
                 self._api_key = api_key
+        self._lock = asyncio.Lock()
 
     def add_api_key(self, api_key: str):
         self.__api_keys.append(api_key)
@@ -28,7 +29,8 @@ class SecurityTrails(Datasource):
     async def check_api_key(self):
         if not self._api_key:
             self.print_error("Missing, disabling module")
-            self._enabled = False
+            async with self._lock:
+                self._enabled = False
             return
         timeout = aiohttp.ClientTimeout(total=self.timeout)
         headers = {"accept": "application/json", "APIKEY": self._api_key}
@@ -39,7 +41,8 @@ class SecurityTrails(Datasource):
                     async with session.get('https://api.securitytrails.com/v1/ping', headers=headers) as response:
                         if response.status != 200:
                             self.print_error("Invalid, disabling module")
-                            self._enabled = False
+                            async with self._lock:
+                                self._enabled = False
                         else:
                             self.print_ok("Present")
                 break
@@ -72,8 +75,9 @@ class SecurityTrails(Datasource):
                         async with session.post(next_url, headers=headers, json=body) as response:
                             if response.status != 200:
                                 if response.status == 429:
-                                    self._api_key = self.__api_keys.pop(0)
-                                    headers = {"accept": "application/json", "APIKEY": self._api_key}
+                                    async with self._lock:
+                                        self._api_key = self.__api_keys.pop(0)
+                                        headers = {"accept": "application/json", "APIKEY": self._api_key}
                                     continue
                                 self.print_error(f' API returned {response.status}:{await response.text()}')
                                 return datasource_objects
@@ -119,7 +123,9 @@ class SecurityTrails(Datasource):
         if not self._enabled:
             return []
         datasource_objects = []
-        self.print_info(f"Started search for IP {IP}")
+        if self._barier:
+            self.print_info(f"Started search for IP {self.scandidate}")
+            self._barier = False
         for i in range(self.retry):
             try:
                 domain_list = []
@@ -132,8 +138,9 @@ class SecurityTrails(Datasource):
                         async with session.post(next_url, headers=headers, json=body) as response:
                             if response.status != 200:
                                 if response.status == 429:
-                                    self._api_key = self.__api_keys.pop(0)
-                                    headers = {"accept": "application/json", "APIKEY": self._api_key}
+                                    async with self._lock:
+                                        self._api_key = self.__api_keys.pop(0)
+                                        headers = {"accept": "application/json", "APIKEY": self._api_key}
                                     continue
                                 self.print_error(f' API returned {response.status}:{await response.text()}')
                                 return datasource_objects
@@ -152,26 +159,30 @@ class SecurityTrails(Datasource):
                                         f"Max pages reached {page}/{total_pages}, stopping. Consider API upgrade.")
                             for record in domain_data:
                                 subdomain = record.get('hostname', '')
-                                self.print_ok(f"Found subdomain {subdomain}", clear_to_eol=True, end='\r')
                                 datasource_object = DatasourceObject(domain=subdomain, DNSData=[
                                     DNSRecordGenerator(type='A', value=x, ttl=-1, source=__class__.__name__,
                                                        record_last_seen=None) for x in record.get('ips', [])])
                                 domain_list.append(subdomain)
                                 datasource_objects.append(datasource_object)
                 # return list(set(domain_list))
-                self.print_info(f"Finished search for IP {IP}")
+                if self._end_barier:
+                    self.print_info(f"Finished search for IP {self.scandidate}")
+                    self._end_barier = False
                 return datasource_objects
             except asyncio.exceptions.CancelledError:
-                self.print_warning(f"IP {IP} lookup canceled.")
+                self.print_warning(f"IP {self.scandidate} lookup canceled.")
                 return datasource_objects
             except StopIteration:
                 self.print_error(f"Could not get more records from SecurityTrails API.")
                 return datasource_objects
             except TimeoutError:
-                self.print_warning(f"Timed out when fetching data for IP {IP}. Trying again. ({i + 1}/{self.retry})")
+                self.print_warning(f"Timed out when fetching data for IP {self.scandidate}. Trying again. ({i + 1}/{self.retry})")
                 await asyncio.sleep(2)
             except IndexError:
-                self.print_error(f"No more API keys available.")
+                async with self._lock:
+                    if self._enabled:
+                        self.print_error(f"No more API keys available.")
+                    self._enabled = False
                 return datasource_objects
-        self.print_error(f"Max timeout reached for {IP}. SKIPPING.")
+        self.print_error(f"Max timeout reached for {self.scandidate}. SKIPPING.")
         return []

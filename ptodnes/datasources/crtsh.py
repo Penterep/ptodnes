@@ -82,5 +82,9 @@ class CRTsh(Datasource):
         return []
 
     async def reverse_search(self, domain: str):
-        self.print_warning("IP address lookup is not supported.")
+        if not self._enabled:
+            return []
+        if self._barier:
+            self.print_warning("IP address lookup is not supported.")
+            self._barier = False
         return []
