@@ -14,7 +14,7 @@ class CRTsh(Datasource):
         pass
 
     async def check_api_key(self):
-        self.print_warning("API key not required")
+        self.print_ok("API key not required")
 
     async def search(self, domain: str):
         try:

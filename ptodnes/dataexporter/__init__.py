@@ -1,11 +1,25 @@
 from ptodnes.DNS.record import DNSRecord
 from ptodnes.DNS.dns_record_dict import DNSRecordDict
-import ptodnes.datasources
 from ptlibs import ptjsonlib, out_if
 import yaml
 import json
 import dataclasses
 import sys
+
+
+def group_by_source(domain_data: DNSRecordDict) -> dict[str, dict[str, set[str]]]:
+    grouped = {}
+    for domain, records in domain_data.items():
+        for record in records:
+            for source in record.source:
+                if not source:
+                    continue
+                source_group = grouped.setdefault(source, {"domains": set(), "ips": set()})
+                source_group["domains"].add(domain)
+                if record.type == "A" and record.value:
+                    source_group["ips"].add(record.value)
+    return grouped
+
 
 def serializer(x):
     """
@@ -87,27 +101,16 @@ def convert(domain_data: DNSRecordDict, output_format: str, separator=';', very_
         case _:
             output = "\n"
             output += "===== Results =====\n\n"
-            
-            if not ('-ip' in sys.argv or '--ip-address' in sys.argv):
-                for datasource in ptodnes.datasources.datasources.values():
-                    datasource_items = domain_data.by_datasource(datasource)
-                    if datasource_items:
-                        output += out_if(f"{datasource.__class__.__name__}\n", bullet_type='INFO', colortext=True, condition=True)
-                        output += out_if(f"{'\n'.join([x for x in datasource_items.keys()])}\n\n", bullet_type='TEXT', colortext=False, condition=True)
-            else:
-                res = domain_data.as_list()
-                known_ips = set()
 
-                for record in [j for x in res for j in x.DNSData if x.DNSData]:
-                    if record.type == 'A':
-                        known_ips.add(record.value)
-                for ip in known_ips:
-                    output += out_if(f"IP: {ip}\n", bullet_type='INFO', colortext=True, condition=True)
-                    for record,domain in [(j, x.domain) for x in res for j in x.DNSData if x.DNSData and j.type == 'A' and j.value == ip]:
-                        output += out_if(f"{domain}\n", bullet_type='TEXT', colortext=False, condition=True)
-                        output += out_if(f"Seen in: {', '.join(record.source)}\n",
-                                         bullet_type='TEXT', colortext=False, condition=very_verbose, indent=2)
-                    output += '\n'
+            for source, values in sorted(group_by_source(domain_data).items()):
+                output += out_if(f"{source}\n", bullet_type='INFO', colortext=True, condition=True)
+                output += out_if("Domains\n", bullet_type='INFO', colortext=False, condition=bool(values["domains"]))
+                for domain in sorted(values["domains"]):
+                    output += out_if(f"{domain}\n", bullet_type='TEXT', colortext=False, condition=True, indent=4)
+                output += out_if("IPs\n", bullet_type='INFO', colortext=False, condition=bool(values["ips"]))
+                for ip in sorted(values["ips"]):
+                    output += out_if(f"{ip}\n", bullet_type='TEXT', colortext=False, condition=True, indent=4)
+                output += '\n'
                 
                 
 

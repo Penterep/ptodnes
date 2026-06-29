@@ -147,7 +147,7 @@ class DNSRecordDict(dict[str, DNSInfo]):
         for key in keys:
             del(self[key])
 
-    def seq(self) -> Generator[DatasourceObject]:
+    def seq(self) -> Generator:
         for key in self.keys():
             do = DatasourceObject(domain=key, DNSData=self[key])
             yield do

@@ -139,6 +139,10 @@ class Datasource(metaclass=ABCMeta):
         self._retry: int = 5
         self._qtype: Optional[list] = None
         self._api_key: Optional[str] = None
+        self._api_keys: list[str] = []
+        self._config_api_keys: list[str] = []
+        self._cli_api_keys: list[str] = []
+        self._api_keys_from_cli: bool = False
         self._scandidate: Optional[str] = None
         self._enabled: bool = True
         self._barier = True
@@ -147,6 +151,40 @@ class Datasource(metaclass=ABCMeta):
     @classmethod
     def set_scandidate(cls, scandidate: str):
         Datasource._scandidate = scandidate
+
+    def _normalize_api_keys(self, api_keys: str | list[str] | None) -> list[str]:
+        if isinstance(api_keys, str):
+            return [api_keys] if api_keys else []
+        if isinstance(api_keys, list):
+            return [api_key for api_key in api_keys if api_key]
+        return []
+
+    def _load_api_keys(self, api_key: str = ''):
+        self._config_api_keys = self._normalize_api_keys(self.config.get('api_keys', []))
+        if api_key:
+            self._cli_api_keys = [api_key]
+            self._api_keys_from_cli = True
+        else:
+            self._cli_api_keys = []
+            self._api_keys_from_cli = False
+        self._api_keys = self._cli_api_keys + self._config_api_keys
+        self._api_key = ''
+
+    def _add_cli_api_key(self, api_key: str):
+        if not self._api_keys_from_cli:
+            self._api_key = ''
+            self._cli_api_keys = []
+            self._api_keys_from_cli = True
+        if api_key:
+            self._cli_api_keys.append(api_key)
+        self._api_keys = self._cli_api_keys + self._config_api_keys
+
+    def _activate_next_api_key(self) -> bool:
+        if not self._api_keys:
+            self._api_key = ''
+            return False
+        self._api_key = self._api_keys.pop(0)
+        return True
 
     @abstractmethod
     def add_api_key(self, api_key: str):

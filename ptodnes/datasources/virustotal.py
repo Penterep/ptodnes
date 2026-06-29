@@ -9,45 +9,37 @@ class VirusTotal(Datasource):
     _ips_url: str = "https://www.virustotal.com/api/v3/ip_addresses/{IP}/resolutions?limit=40"
     def __init__(self, api_key: str = ''):
         super().__init__()
-        self.__api_keys = self.config.get('api_keys', [])
         self._enabled = self.config.get('enabled', True)
-        if not self.__api_keys:
-            self._api_key = api_key
-        if type(self.__api_keys) is not type([]):
-            self._api_key = api_key
-        else:
-            try:
-                self._api_key = self.__api_keys.pop(0)
-            except IndexError:
-                self._api_key = api_key
+        self._load_api_keys(api_key)
         self._lock = asyncio.Lock()
 
     def add_api_key(self, api_key: str):
-        self.__api_keys.append(api_key)
-        if not self._api_key:
-            self._api_key = api_key
+        self._add_cli_api_key(api_key)
     
     async def check_api_key(self):
-        if not self._api_key:
+        if not self._api_keys:
             self.print_error("Missing, disabling module")
             self._enabled = False
             return
         timeout = aiohttp.ClientTimeout(total=self.timeout)
-        headers = {"accept": "application/json", "x-apikey": self._api_key}
-        retry = self._retry
-        while retry > 0:
-            try:
-                async with aiohttp.ClientSession(timeout=timeout) as session:
-                    async with session.get('https://www.virustotal.com/api/v3/domains/example.com', headers=headers) as response:
-                        if response.status != 200:
-                            self.print_error("Invalid, disabling module")
-                            self._enabled = False
-                        else:
-                            self.print_ok("Present")
-                break
-            except TimeoutError:
-                await asyncio.sleep(2)
-                retry -= 1
+        while self._activate_next_api_key():
+            headers = {"accept": "application/json", "x-apikey": self._api_key}
+            retry = self._retry
+            while retry > 0:
+                try:
+                    async with aiohttp.ClientSession(timeout=timeout) as session:
+                        async with session.get('https://www.virustotal.com/api/v3/domains/example.com', headers=headers) as response:
+                            if response.status == 200:
+                                self.print_ok("Present")
+                                self._enabled = True
+                                return
+
+                            break
+                except TimeoutError:
+                    await asyncio.sleep(2)
+                    retry -= 1
+        self.print_error("Invalid, disabling module")
+        self._enabled = False
 
     async def __get_resolutions(self, domain: str):
         headers = {"accept": "application/json", "x-apikey": self._api_key}
@@ -58,15 +50,16 @@ class VirusTotal(Datasource):
             while url is not None:
                 async with session.get(url, headers=headers) as response:
                     if response.status != 200:
+                        if response.status == 429:
+                            if not self._activate_next_api_key():
+                                raise IndexError
+                            headers = {"accept": "application/json", "x-apikey": self._api_key}
+                            continue
                         async with self._lock:
                             if self._enabled:
                                 self._enabled = False
                                 self.print_error(
                             (await response.json()).get('error', {}).get('message', "Unspecified error."))
-                        if response.status == 429:
-                            self._api_key = self.__api_keys.pop(0)
-                            headers = {"accept": "application/json", "x-apikey": self._api_key}
-                            continue
                         return datasource_objects
                     data = await response.json()
                     try:
@@ -114,7 +107,8 @@ class VirusTotal(Datasource):
                                 self.print_error(
                                     (await response.json()).get('error', {}).get('message', "Unspecified error."))
                                 if response.status == 429:
-                                    self._api_key = self.__api_keys.pop(0)
+                                    if not self._activate_next_api_key():
+                                        raise IndexError
                                     headers = {"accept": "application/json", "x-apikey": self._api_key}
                                     continue
                                 return domain_list
@@ -170,15 +164,16 @@ class VirusTotal(Datasource):
                     while next_url is not None:
                         async with session.get(next_url, headers=headers) as response:
                             if response.status != 200:
+                                if response.status == 429:
+                                    if not self._activate_next_api_key():
+                                        raise IndexError
+                                    headers = {"accept": "application/json", "x-apikey": self._api_key}
+                                    continue
                                 async with self._lock:
                                     if self._enabled:
                                         self._enabled = False
                                         self.print_error(
                                     (await response.json()).get('error', {}).get('message', "Unspecified error."))
-                                if response.status == 429:
-                                    self._api_key = self.__api_keys.pop(0)
-                                    headers = {"accept": "application/json", "x-apikey": self._api_key}
-                                    continue
                                 return domain_list
                             data = await response.json()
                             try:
