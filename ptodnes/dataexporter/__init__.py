@@ -1,3 +1,6 @@
+from argparse import Namespace
+
+from ptodnes.DNS.dnsinfo import DNSInfo
 from ptodnes.DNS.record import DNSRecord
 from ptodnes.DNS.dns_record_dict import DNSRecordDict
 from ptlibs import ptjsonlib, out_if
@@ -19,6 +22,19 @@ def group_by_source(domain_data: DNSRecordDict) -> dict[str, dict[str, set[str]]
                 if record.type == "A" and record.value:
                     source_group["ips"].add(record.value)
     return grouped
+
+
+def get_domain_bt(domain_data: DNSInfo, show_status: bool) -> str:
+    if not show_status:
+        return "TEXT"
+
+    if domain_data.matches is True:
+        return "OK"
+
+    if domain_data.matches is False:
+        return "WARNING"
+
+    return "ERROR"
 
 
 def serializer(x):
@@ -43,14 +59,17 @@ class OdnesDumper(yaml.Dumper):
 
 
 
-def convert(domain_data: DNSRecordDict, output_format: str, separator=';', very_verbose: bool = False) -> str:
+def convert(domain_data: DNSRecordDict, args: Namespace, separator=';') -> str:
     """
     Convert domain data to output format
     :param domain_data: DNSRecordDict to convert
-    :param output_format: output format string valid are `csv`, `json`, and `yaml`
+    :param args: args`
     :param separator: separator for csv output format
     :return:
     """
+    output_format: str = args.format
+    very_verbose: bool = args.very_verbose
+
     match output_format:
         case 'yaml':
             output = yaml.dump(dict(domain_data), Dumper=OdnesDumper)
@@ -103,15 +122,21 @@ def convert(domain_data: DNSRecordDict, output_format: str, separator=';', very_
             output += "===== Results =====\n\n"
 
             for source, values in sorted(group_by_source(domain_data).items()):
+                if source == "DNS" and args.ip_address:
+                    output += '\n'
+                    continue
                 output += out_if(f"{source}\n", bullet_type='INFO', colortext=True, condition=True)
                 output += out_if("Domains\n", bullet_type='INFO', colortext=False, condition=bool(values["domains"]))
                 for domain in sorted(values["domains"]):
-                    output += out_if(f"{domain}\n", bullet_type='TEXT', colortext=False, condition=True, indent=4)
-                output += out_if("IPs\n", bullet_type='INFO', colortext=False, condition=bool(values["ips"]))
-                for ip in sorted(values["ips"]):
-                    output += out_if(f"{ip}\n", bullet_type='TEXT', colortext=False, condition=True, indent=4)
-                output += '\n'
-                
+                    bt = get_domain_bt(domain_data[domain], bool(args.query and args.ip_address))
+                    output += out_if(f"{domain}\n", bullet_type=bt, colortext=False, condition=True, indent=4)
+
+                if not args.ip_address:
+                    output += out_if("IPs\n", bullet_type='INFO', colortext=False, condition=bool(values["ips"]))
+                    for ip in sorted(values["ips"]):
+                        output += out_if(f"{ip}\n", bullet_type='TEXT', colortext=False, condition=True, indent=4)
+
+            output += '\n'
                 
 
             # Print web applications if any vhost is found

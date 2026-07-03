@@ -238,6 +238,8 @@ async def process(loop: asyncio.AbstractEventLoop,
 
         if query:
             qtypes = type.copy()
+            if ip_address and "A" not in qtypes:
+                qtypes.append("A")
             if "ANY" in type:
                 qtypes = ['A', 'AAAA', 'CNAME', 'MX', 'NAPTR', 'NS', 'PTR', 'SOA', 'SRV', 'TXT',]
 
@@ -246,6 +248,20 @@ async def process(loop: asyncio.AbstractEventLoop,
                 task = loop.create_task(odnesdns.query(res, qtype=qtype))
                 qtasks.append(task)
             await asyncio.gather(*qtasks)
+
+        if query and ip_address:
+            target_ips = set(ip_address)
+            for key, value in res.items():
+                verified_a_records = [
+                    record for record in value.records
+                    if record.type == 'A' and record.verified
+                ]
+                if any(record.value in target_ips for record in verified_a_records):
+                    res[key].matches = True
+                elif verified_a_records:
+                    res[key].matches = False
+                else:
+                    res[key].matches = None
 
         res.filter(type)
 
