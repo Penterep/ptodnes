@@ -174,7 +174,7 @@ async def main(loop):
     if result is None:
         exit(1)
 
-    output = dataexporter.convert(result, args.format, very_verbose=args.very_verbose)
+    output = dataexporter.convert(result, args)
 
     if args.output is None:
         ptprint(output)
