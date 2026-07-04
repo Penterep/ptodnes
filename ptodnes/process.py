@@ -234,7 +234,7 @@ async def process(loop: asyncio.AbstractEventLoop,
 
             if nonxdomain:
                 res.filterNX()
-            return res
+            # return res
 
         if query:
             qtypes = type.copy()

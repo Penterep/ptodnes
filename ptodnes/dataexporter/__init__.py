@@ -137,14 +137,40 @@ def convert(domain_data: DNSRecordDict, args: Namespace, separator=';') -> str:
                         output += out_if(f"{ip}\n", bullet_type='TEXT', colortext=False, condition=True, indent=4)
 
             output += '\n'
-                
 
-            # Print web applications if any vhost is found
-            if any(p.is_vhost for p in domain_data.values()):
-                    output += out_if("Web Applications\n", bullet_type='INFO', colortext=True, condition=True)
-                    for domain, info in domain_data.items():
-                        output += out_if(f"{domain}\n", bullet_type=f'{"TEXT" if not info.vulnerabilities else "WARNING"}', colortext=True, condition=info.is_vhost)
-                    output += '\n'
+            # Print vhosts for domains present on tested IP
+            if any(p.is_vhost and (p.matches or not args.query) for p in domain_data.values()):
+                output += out_if("Web applications on tested IP\n", bullet_type="INFO", colortext=True, condition=True)
+                for domain, info in domain_data.items():
+                    output += out_if(f"{domain}\n", bullet_type="TEXT", colortext=True,
+                                     condition=info.is_vhost and (info.matches or not args.query), indent=4)
+
+                output += '\n'
+
+            # Print vhosts for domains present on another IP
+            if any(p.is_vhost and not p.matches for p in domain_data.values()) and args.query:
+                output += out_if("Web applications on another IP\n", bullet_type="INFO", colortext=True, condition=True)
+                for domain, info in domain_data.items():
+                    if info.records:
+                        for record in info.records:
+                            if "DNS" in record.source:
+                                output += out_if(f"{domain}    ({record.value})\n",
+                                     bullet_type="TEXT", colortext=True, condition=info.is_vhost and not info.matches,
+                                     indent=4)
+
+                output += '\n'
+
+            # Print old vhosts
+            if any(p.is_vhost and p.vulnerabilities is not None and "PTV-WEB-MISCONF-OLDVHOST" in p.vulnerabilities for p in domain_data.values()):
+                output += out_if("Non-deleted Web Applications on tested IP\n", bullet_type="INFO", colortext=True, condition=True)
+                for domain, info in domain_data.items():
+                    output += out_if(f"{domain}\n", bullet_type="TEXT", colortext=True,
+                                     condition=info.is_vhost and
+                                               info.vulnerabilities is not None and
+                                               "PTV-WEB-MISCONF-OLDVHOST" in info.vulnerabilities,
+                                     indent=4)
+
+                output += '\n'
 
             # Print summary of results
             output += out_if("Summary\n", bullet_type='INFO', colortext=True, condition=True)
