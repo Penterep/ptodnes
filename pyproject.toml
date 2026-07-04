@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ptodnes"
-version = "1.11.11"
+version = "1.11.12"
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Information Technology",
