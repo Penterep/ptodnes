@@ -119,7 +119,6 @@ def convert(domain_data: DNSRecordDict, args: Namespace, separator=';') -> str:
                         output += f"{' ' * 4}Source: {record.source}\n"
         case _:
             output = "\n"
-            output += "===== Results =====\n\n"
 
             for source, values in sorted(group_by_source(domain_data).items()):
                 if source == "DNS" and args.ip_address:
