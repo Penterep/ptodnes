@@ -44,13 +44,14 @@ async def _fetch_ip_with_host(
     ip: str,
     host_header: str,
     timeout: int,
-) -> tuple[int | None, str | None]:
+    handle_redirects: bool
+) -> tuple[int | None, str | None] | dict:
     url = f"{scheme}://{ip}/"
     try:
         async with session.get(
             url,
             headers={"Host": host_header},
-            allow_redirects=False,
+            allow_redirects=handle_redirects,
             timeout=aiohttp.ClientTimeout(total=timeout),
         ) as resp:
             status = resp.status
@@ -58,6 +59,29 @@ async def _fetch_ip_with_host(
                 text = await resp.text(errors="ignore")
             except Exception:
                 text = None
+
+            if 300 <= resp.status < 400 and handle_redirects:
+                redirect_url = resp.headers.get("Location")
+
+                async with session.get(
+                        redirect_url,
+                        headers={"Host": host_header},
+                        allow_redirects=False,
+                    timeout=aiohttp.ClientTimeout(total=timeout)
+                ) as redirect_resp:
+                    r_status = redirect_resp.status
+                    try:
+                        r_text = await redirect_resp.text(errors="ignore")
+                    except Exception:
+                        r_text = None
+
+                return {
+                    "status": status,
+                    "text": text,
+                    "r_status": r_status,
+                    "r_text": r_text
+                }
+
             return status, _extract_title(text)
     except Exception:
         return None, None
@@ -69,6 +93,8 @@ class VhostHit:
     ip: str
     status: int | None
     title: str | None
+    redirect_status: int | None
+    redirect_title: str | None
     baseline_status: int | None
     baseline_title: str | None
     dns_current: bool
@@ -112,6 +138,7 @@ class VhostFactChecker:
                     ip=self._ip,
                     host_header=self._baseline_host,
                     timeout=self._timeout,
+                    handle_redirects=False
                 )
                 if base_st is not None:
                     self.__setattr__(scheme, (base_st, base_title))
@@ -137,8 +164,8 @@ class VhostFactChecker:
     ):
         for record in info.records:
             if record.type == 'A':
-                if record.value != self._ip:
-                    continue
+                #if record.value != self._ip:
+                #    continue
                 hits = await self._enumerate_vhost(info, record)
                 if hits:
                     if not info.vhost_hits:
@@ -157,13 +184,23 @@ class VhostFactChecker:
         hits: List[VhostHit] = []
         async with aiohttp.ClientSession(connector=connector) as session:
             for scheme in self._schemes:
-                st, title = await _fetch_ip_with_host(
+                fetched = await _fetch_ip_with_host(
                     session=session,
                     scheme=scheme,
                     ip=self._ip,
                     host_header=info.domain,
                     timeout=self._timeout,
+                    handle_redirects=True
                 )
+
+                if isinstance(fetched, tuple):
+                    st, title = fetched[0], fetched[1]
+                    r_status, r_title = None, None
+
+                if isinstance(fetched, dict):
+                    st, title = fetched.get("status"), fetched.get("title")
+                    r_status, r_title = fetched.get("r_status"), fetched.get("r_title")
+
                 base_st, base_title = self._baseline(scheme)
                 if st is not None and (st, title) != (base_st, base_title):
                     vulns: List[str] = []
@@ -180,6 +217,8 @@ class VhostFactChecker:
                                 baseline_title=base_title,
                                 dns_current=record.verified if record else False,
                                 vulnerabilities=vulns,
+                                redirect_status=r_status,
+                                redirect_title=r_title
                             )
                         )
         return hits if hits else None
