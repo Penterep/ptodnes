@@ -118,15 +118,13 @@ def convert(domain_data: DNSRecordDict, args: Namespace, separator=';') -> str:
                         output += f"{' ' * 4}Verified: {record.verified}\n"
                         output += f"{' ' * 4}Source: {record.source}\n"
         case _:
-            output = "\n"
-            output += "===== Results =====\n\n"
+            output = ""
 
             for source, values in sorted(group_by_source(domain_data).items()):
                 if source == "DNS" and args.ip_address:
                     output += '\n'
                     continue
-                output += out_if(f"{source}\n", bullet_type='INFO', colortext=True, condition=True)
-                output += out_if("Domains\n", bullet_type='INFO', colortext=False, condition=bool(values["domains"]))
+                output += out_if(f"{source} domains found\n", bullet_type='INFO', colortext=True, condition=True)
                 for domain in sorted(values["domains"]):
                     bt = get_domain_bt(domain_data[domain], bool(args.query and args.ip_address))
                     output += out_if(f"{domain}\n", bullet_type=bt, colortext=False, condition=True, indent=4)
@@ -137,6 +135,42 @@ def convert(domain_data: DNSRecordDict, args: Namespace, separator=';') -> str:
                         output += out_if(f"{ip}\n", bullet_type='TEXT', colortext=False, condition=True, indent=4)
 
             output += '\n'
+
+            if args.query:
+                output += out_if('------------------------------------------\n', condition=True, bullet_type="TEXT", indent=4)
+                output += out_if("The domain is present on the tested IP\n", bullet_type="OK", colortext=True, condition=True,
+                                 indent=4)
+                output += out_if("The domain is present on another IP\n", bullet_type="WARNING", colortext=True,
+                                 condition=True, indent=4)
+                output += out_if("The domain does not exist\n\n", bullet_type="ERROR", colortext=True,
+                                 condition=True, indent=4)
+
+                # Print summary of results
+                output += out_if("Summary (domains from all services)\n", bullet_type='INFO', colortext=True,
+                                 condition=True)
+                for domain, records in domain_data.items():
+                    output += out_if(f"{domain}\n", bullet_type='TEXT', colortext=False, condition=True, indent=4)
+                    if very_verbose:
+                        output += out_if(f"Vhost found!\n",
+                                         bullet_type='WARNING', colortext=True, condition=records.is_vhost, indent=8)
+                        output += out_if(
+                            f"Vulnerabilities: {', '.join(records.vhost_hits[0].vulnerabilities) if records.vhost_hits else None}\n",
+                            bullet_type='VULN', colortext=True, condition=records.is_vhost, indent=12)
+                        output += out_if(f"None\n",
+                                         bullet_type='OK', colortext=True,
+                                         condition=records.is_vhost and len(records.vhost_hits[0].vulnerabilities) == 0,
+                                         indent=12)
+                        for record in records:
+                            if record.type == 'A':
+                                output += out_if(
+                                    f"IP: {record.value or 'Unknown'}, Last seen: {record.record_last_seen.date() if record.record_last_seen else "Unknown"}, \
+            Verified: {"Yes" if record.verified else "No"}\n",
+                                    bullet_type='ADDITIONS', colortext=True, condition=very_verbose, indent=8)
+                            elif record.type == 'CNAME':
+                                output += out_if(
+                                    f"CNAME of: {record.value or 'Unknown'}, Last seen: {record.record_last_seen.date() if record.record_last_seen else "Unknown"}, \
+            Verified: {"Yes" if record.verified else "No"}\n",
+                                    bullet_type='ADDITIONS', colortext=True, condition=very_verbose, indent=8)
 
             # Print vhosts for domains present on tested IP
             if any(p.is_vhost and (p.matches or not args.query) for p in domain_data.values()):
@@ -172,26 +206,26 @@ def convert(domain_data: DNSRecordDict, args: Namespace, separator=';') -> str:
 
                 output += '\n'
 
-            # Print summary of results
-            output += out_if("Summary\n", bullet_type='INFO', colortext=True, condition=True)
-            for domain, records in domain_data.items():
-                output += out_if(f"{domain}\n", bullet_type='TEXT', colortext=False, condition=True)
-                if very_verbose:
-                    output += out_if(f"Vhost found!\n",
-                                         bullet_type='WARNING', colortext=True, condition=records.is_vhost, indent=2)
-                    output += out_if(f"Vulnerabilities: {', '.join(records.vhost_hits[0].vulnerabilities) if records.vhost_hits else None}\n",
-                                         bullet_type='VULN', colortext=True, condition=records.is_vhost, indent=4)
-                    output += out_if(f"None\n",
-                                         bullet_type='OK', colortext=True, condition=records.is_vhost and len(records.vhost_hits[0].vulnerabilities) == 0, indent=6)
-                    for record in records:
-                        if record.type == 'A':
-                            output += out_if(f"IP: {record.value or 'Unknown'}, Last seen: {record.record_last_seen.date() if record.record_last_seen else "Unknown"}, \
-Verified: {"Yes" if record.verified else "No"}\n",
-                                         bullet_type='ADDITIONS', colortext=True, condition=very_verbose, indent=2)
-                        elif record.type == 'CNAME':
-                            output += out_if(
-                                f"CNAME of: {record.value or 'Unknown'}, Last seen: {record.record_last_seen.date() if record.record_last_seen else "Unknown"}, \
-Verified: {"Yes" if record.verified else "No"}\n",
-                                bullet_type='ADDITIONS', colortext=True, condition=very_verbose, indent=2)
+            if ((args.ip_address or args.file_ip) and (args.domain or args.file_domains)):
+                output += out_if(f"Domain information\n", bullet_type="INFO", colortext=True, condition=True)
+                for domain, info in domain_data.items():
+                    output += out_if(f"{domain}\n", bullet_type="INFO", colortext=False,
+                                     condition=True, indent=4)
+                    output += out_if(f"The DNS record matches the IP {info.records[0].value}\n", bullet_type="OK", colortext=False,
+                                    condition=info.matches, indent=8)
+                    output += out_if(f"The DNS record does not match the provided IP\n", bullet_type="VULN", colortext=False,
+                                    condition=not info.matches, indent=8)
 
+                    """
+                    if args.web_apps and info.vhost_hits:
+                        for hit in info.vhost_hits:
+                            output += out_if(f"Status: {hit.status}\n", bullet_type="TEXT", colortext=True,
+                                             condition=True, indent=4)
+                            output += out_if(f"Title: {hit.title}\n", bullet_type="TEXT", colortext=True,
+                                             condition=True, indent=4)
+                            output += out_if(f"Redirect status: {hit.redirect_status}\n", bullet_type="TEXT", colortext=True,
+                                             condition=hit.redirect_status, indent=4)
+                            output += out_if(f"Redirect title: {hit.redirect_title}\n", bullet_type="TEXT", colortext=True,
+                                             condition=hit.redirect_title, indent=4)
+                    """
     return output

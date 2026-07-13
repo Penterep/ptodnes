@@ -25,6 +25,8 @@ def domain_parser(arg_value):
     rgx = re.compile(r'^((?!-)[A-Za-z0-9-]{1,63}(?<!-)\.)+[A-Za-z]{2,6}$')
     if not rgx.match(arg_value):
         raise argparse.ArgumentTypeError("Invalid domain name")
+    if arg_value.endswith('\n'):
+        arg_value = arg_value[:-1]
     return arg_value
 
 def ipv4(arg_value):
