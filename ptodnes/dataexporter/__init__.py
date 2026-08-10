@@ -151,38 +151,38 @@ def convert(domain_data: DNSRecordDict, args: Namespace, separator=';') -> str:
                 for domain, records in domain_data.items():
                     output += out_if(f"{domain}\n", bullet_type='TEXT', colortext=False, condition=True, indent=4)
                     if very_verbose:
-                        output += out_if(f"Vhost found!\n",
-                                         bullet_type='WARNING', colortext=True, condition=records.is_vhost, indent=8)
-                        output += out_if(
-                            f"Vulnerabilities: {', '.join(records.vhost_hits[0].vulnerabilities) if records.vhost_hits else None}\n",
-                            bullet_type='VULN', colortext=True, condition=records.is_vhost, indent=12)
-                        output += out_if(f"None\n",
-                                         bullet_type='OK', colortext=True,
-                                         condition=records.is_vhost and len(records.vhost_hits[0].vulnerabilities) == 0,
-                                         indent=12)
                         for record in records:
                             if record.type == 'A':
+                                # Create the prefix string first
+                                info_str = f"IP: {record.value or 'Unknown'}, Last seen: {record.record_last_seen.date() if record.record_last_seen else 'Unknown'},"
+
+                                # Pad the prefix to exactly 60 characters (adjust the 60 as needed for your console width)
                                 output += out_if(
-                                    f"IP: {record.value or 'Unknown'}, Last seen: {record.record_last_seen.date() if record.record_last_seen else "Unknown"}, \
-            Verified: {"Yes" if record.verified else "No"}\n",
+                                    f"{info_str:<60} Verified: {'Yes' if record.verified else 'No'}\n",
                                     bullet_type='ADDITIONS', colortext=True, condition=very_verbose, indent=8)
+
                             elif record.type == 'CNAME':
+                                # Create the prefix string first
+                                info_str = f"CNAME of: {record.value or 'Unknown'}, Last seen: {record.record_last_seen.date() if record.record_last_seen else 'Unknown'},"
+
+                                # Pad the prefix to exactly 60 characters
                                 output += out_if(
-                                    f"CNAME of: {record.value or 'Unknown'}, Last seen: {record.record_last_seen.date() if record.record_last_seen else "Unknown"}, \
-            Verified: {"Yes" if record.verified else "No"}\n",
+                                    f"{info_str:<60} Verified: {'Yes' if record.verified else 'No'}\n",
                                     bullet_type='ADDITIONS', colortext=True, condition=very_verbose, indent=8)
+
+
 
             # Print vhosts for domains present on tested IP
             if any(p.is_vhost and (p.matches or not args.query) for p in domain_data.values()):
+                output += '\n'
                 output += out_if("Web applications on tested IP\n", bullet_type="INFO", colortext=True, condition=True)
                 for domain, info in domain_data.items():
                     output += out_if(f"{domain}\n", bullet_type="TEXT", colortext=True,
                                      condition=info.is_vhost and (info.matches or not args.query), indent=4)
 
-                output += '\n'
-
             # Print vhosts for domains present on another IP
             if any(p.is_vhost and not p.matches for p in domain_data.values()) and args.query:
+                output += '\n'
                 output += out_if("Web applications on another IP\n", bullet_type="INFO", colortext=True, condition=True)
                 for domain, info in domain_data.items():
                     if info.records:
@@ -192,10 +192,10 @@ def convert(domain_data: DNSRecordDict, args: Namespace, separator=';') -> str:
                                      bullet_type="TEXT", colortext=True, condition=info.is_vhost and not info.matches,
                                      indent=4)
 
-                output += '\n'
 
             # Print old vhosts
             if any(p.is_vhost and p.vulnerabilities is not None and "PTV-WEB-MISCONF-OLDVHOST" in p.vulnerabilities for p in domain_data.values()):
+                output += '\n'
                 output += out_if("Non-deleted Web Applications on tested IP\n", bullet_type="INFO", colortext=True, condition=True)
                 for domain, info in domain_data.items():
                     output += out_if(f"{domain}\n", bullet_type="TEXT", colortext=True,
@@ -204,9 +204,10 @@ def convert(domain_data: DNSRecordDict, args: Namespace, separator=';') -> str:
                                                "PTV-WEB-MISCONF-OLDVHOST" in info.vulnerabilities,
                                      indent=4)
 
-                output += '\n'
+
 
             if ((args.ip_address or args.file_ip) and (args.domain or args.file_domains)):
+                output += '\n'
                 output += out_if(f"Domain information\n", bullet_type="INFO", colortext=True, condition=True)
                 for domain, info in domain_data.items():
                     output += out_if(f"{domain}\n", bullet_type="INFO", colortext=False,
