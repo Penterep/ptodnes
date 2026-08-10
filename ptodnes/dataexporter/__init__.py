@@ -162,14 +162,21 @@ def convert(domain_data: DNSRecordDict, args: Namespace, separator=';') -> str:
                                          indent=12)
                         for record in records:
                             if record.type == 'A':
+                                # Create the prefix string first
+                                info_str = f"IP: {record.value or 'Unknown'}, Last seen: {record.record_last_seen.date() if record.record_last_seen else 'Unknown'},"
+
+                                # Pad the prefix to exactly 60 characters (adjust the 60 as needed for your console width)
                                 output += out_if(
-                                    f"IP: {record.value or 'Unknown'}, Last seen: {record.record_last_seen.date() if record.record_last_seen else "Unknown"}, \
-            Verified: {"Yes" if record.verified else "No"}\n",
+                                    f"{info_str:<60} Verified: {'Yes' if record.verified else 'No'}\n",
                                     bullet_type='ADDITIONS', colortext=True, condition=very_verbose, indent=8)
+
                             elif record.type == 'CNAME':
+                                # Create the prefix string first
+                                info_str = f"CNAME of: {record.value or 'Unknown'}, Last seen: {record.record_last_seen.date() if record.record_last_seen else 'Unknown'},"
+
+                                # Pad the prefix to exactly 60 characters
                                 output += out_if(
-                                    f"CNAME of: {record.value or 'Unknown'}, Last seen: {record.record_last_seen.date() if record.record_last_seen else "Unknown"}, \
-            Verified: {"Yes" if record.verified else "No"}\n",
+                                    f"{info_str:<60} Verified: {'Yes' if record.verified else 'No'}\n",
                                     bullet_type='ADDITIONS', colortext=True, condition=very_verbose, indent=8)
 
             # Print vhosts for domains present on tested IP
