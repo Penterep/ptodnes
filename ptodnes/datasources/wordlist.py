@@ -1,4 +1,5 @@
 import asyncio
+import sys
 import aiofiles
 import re
 
@@ -80,13 +81,16 @@ class Wordlist(Datasource):
 
     async def read_wordlist(self):
         for wordlist in self.__wordlists:
-            self.print_info(f"Reading wordlist {wordlist}")
             try:
+                self.print_info(f"Reading wordlist {wordlist}")
+                file_size = os.path.getsize(wordlist)
                 async with aiofiles.open(wordlist, 'r') as wordlist_file:
                     async for line in wordlist_file:
+                        self.print_progress(max=file_size, cur=await wordlist_file.tell())
                         if line.endswith('\n'):
                             line = line[:-1]
                         yield line
+                    self.print_ok(f"Reading done")
             except PermissionError:
                 self.print_error(f"Permissions denied for '{wordlist}'")
                 continue

@@ -221,13 +221,29 @@ class Datasource(metaclass=ABCMeta):
         return self._verbose and self._verbose_level >= level
     def print_info(self, msg, *args, **kwargs):
         if self._print_level(level=3):
+            print("\r\033[K", end="")
             ptprint(f"{self.__class__.__name__}: {msg}", "INFO", *args, **kwargs)
     def print_ok(self, msg, *args, **kwargs):
+        print("\r\033[K", end="")
         ptprint(out_if(f"{self.__class__.__name__}: {msg}", "OK", self._print_level(3)), *args, **kwargs)
     def print_error(self, msg, *args, **kwargs):
+        print("\r\033[K", end="")
         ptprint(out_if(f"{self.__class__.__name__}: {msg}", "ERROR", self._print_level(1)), *args, **kwargs)
     def print_warning(self, msg, *args, **kwargs):
+        print("\r\033[K", end="")
         ptprint(out_if(f"{self.__class__.__name__}: {msg}", "WARNING", self._print_level(2)), *args, **kwargs)
+    def print_progress(self, max, cur, *args, **kwargs):
+        if self._print_level(level=3):
+            progress = cur / max if max else 0
+            bar_length = 30
+            filled = int(bar_length * progress)
+            bar = "▓" * filled + "░" * (bar_length - filled)
+            print(
+                f"\033[5G{self.__class__.__name__} reading progress: [{bar}] {progress * 100:.1f}%",
+                end="\r",
+                flush=True
+            )
+            #ptprint(f"{self.__class__.__name__}: Progress [{bar}] {progress * 100:.1f}%", "INFO", *args, **kwargs)
     def set_verbose(self, verbose, *args, **kwargs):
         self._verbose = verbose
     def set_verbose_level(self, verbose_level):
