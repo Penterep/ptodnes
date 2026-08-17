@@ -45,7 +45,7 @@ class OdnesDNS(metaclass=Singleton):
         """
         try:
             if print_func:
-                print_func(f"querying {domain}", clear_to_eol=True, end='\r')
+                print_func(f"Querying {domain}", clear_to_eol=True, end='\r')
             async with self._sem:
                 data = await self.__resolver.query_dns(domain, qtype) #ANY not working on all servers
             preprocessed = []
@@ -106,15 +106,38 @@ class OdnesDNS(metaclass=Singleton):
         except aiodns.error.DNSError:
             pass
 
-    async def query(self, domain_list: DNSRecordDict, qtype='ANY', *, print_func=None):
+    async def query(self, domain_list: DNSRecordDict, qtype='ANY', *, print_func=None, progress_func=None):
         """
         Query provided domain list with selected record type, update its data with results.
         :param domain_list: domain list to query.
         :param qtype: query type.
+        :param progress_func: callback receiving (max, cur, label)
         """
         tasks = []
+        total = len(domain_list)
+        processed = 0
+
+        async def tracked_query(domain: str, info):
+            nonlocal processed
+            try:
+                await self.query_one(domain, info.records, qtype, print_func=print_func)
+            finally:
+                processed += 1
+                if progress_func:
+                    progress_func(max=total, cur=processed, label=f'Querying {qtype}')
+
         for domain, info in domain_list.items():
-            task = asyncio.create_task(self.query_one(domain, info.records, qtype, print_func=print_func))
+            task = asyncio.create_task(tracked_query(domain, info))
             tasks.append(task)
         await asyncio.gather(*tasks)
+        # indicate querying finished (similar to wordlist reading completion)
+        if progress_func:
+            progress_func(max=total, cur=processed, label=f'Querying {qtype} done')
+        if print_func:
+            try:
+                print_func(f"Querying {qtype} done", clear_to_eol=True)
+            except TypeError:
+                # print_func may not accept kwargs in some callers
+                print_func(f"Querying {qtype} done")
+
 

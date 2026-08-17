@@ -62,7 +62,8 @@ class Wordlist(Datasource):
 
         qtasks = []
         for qtype in qtypes:
-            task = dns.get_loop().create_task(dns.query(res, qtype=qtype, print_func=self.print_info))
+            task = dns.get_loop().create_task(dns.query(res, qtype=qtype, print_func=self.print_info,
+                                                       progress_func=self.print_progress))
             qtasks.append(task)
         await asyncio.gather(*qtasks)
         if self._verbose:
@@ -90,7 +91,7 @@ class Wordlist(Datasource):
                         if line.endswith('\n'):
                             line = line[:-1]
                         yield line
-                    self.print_ok(f"Reading done")
+                    self.print_info(f"Reading done")
             except PermissionError:
                 self.print_error(f"Permissions denied for '{wordlist}'")
                 continue
