@@ -11,6 +11,15 @@ from ptodnes.DNS.dns_record_dict import DNSRecordDict
 import punycode
 import os
 
+from rich.progress import (
+    Progress,
+    SpinnerColumn,
+    TextColumn,
+    BarColumn,
+    TaskProgressColumn,
+    TimeRemainingColumn,
+)
+
 class Wordlist(Datasource):
 
     def __init__(self, api_key: str = ''):
@@ -61,11 +70,30 @@ class Wordlist(Datasource):
             qtypes = ['A', 'AAAA', 'CNAME']
 
         qtasks = []
-        for qtype in qtypes:
-            task = dns.get_loop().create_task(dns.query(res, qtype=qtype, print_func=self.print_info,
-                                                       progress_func=self.print_progress))
-            qtasks.append(task)
-        await asyncio.gather(*qtasks)
+        total_domains = len(res)
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TaskProgressColumn(),
+            transient=True,
+            redirect_stdout=True,
+        ) as progress:
+            task_map: dict[str, int] = {}
+            for qtype in qtypes:
+                task_map[qtype] = progress.add_task(f"Querying {qtype}", total=total_domains)
+
+            for qtype in qtypes:
+                # bind qtype into lambda default to avoid late binding
+                def make_progress_func(tid):
+                    return lambda max, cur, label: progress.update(tid, total=max, completed=cur)
+
+                task = dns.get_loop().create_task(
+                    dns.query(res, qtype=qtype, print_func=self.print_info, progress_func=make_progress_func(task_map[qtype]))
+                )
+                qtasks.append(task)
+
+            await asyncio.gather(*qtasks)
         if self._verbose:
             print()
         res.filter_untrusted()
@@ -85,13 +113,27 @@ class Wordlist(Datasource):
             try:
                 self.print_info(f"Reading wordlist {wordlist}")
                 file_size = os.path.getsize(wordlist)
-                async with aiofiles.open(wordlist, 'r') as wordlist_file:
-                    async for line in wordlist_file:
-                        self.print_progress(max=file_size, cur=await wordlist_file.tell())
-                        if line.endswith('\n'):
-                            line = line[:-1]
-                        yield line
-                    self.print_info(f"Reading done")
+                with Progress(
+                    SpinnerColumn(),
+                    TextColumn("[progress.description]{task.description}"),
+                    BarColumn(),
+                    TaskProgressColumn(),
+                    transient=True,
+                    redirect_stdout=True,
+                ) as progress:
+                    task_id = progress.add_task("Reading wordlist", total=file_size)
+                    async with aiofiles.open(wordlist, 'r') as wordlist_file:
+                        async for line in wordlist_file:
+                            # advance by byte length of the line to reflect file progress
+                            try:
+                                advance_bytes = len(line.encode('utf-8'))
+                            except Exception:
+                                advance_bytes = len(line)
+                            progress.update(task_id, advance=advance_bytes)
+                            if line.endswith('\n'):
+                                line = line[:-1]
+                            yield line
+                self.print_info("Reading done")
             except PermissionError:
                 self.print_error(f"Permissions denied for '{wordlist}'")
                 continue
@@ -102,5 +144,5 @@ class Wordlist(Datasource):
                 self.print_error(f"Domains file '{wordlist}' is not a file")
                 continue
             except Exception as e:
-                self.print_error(e)
+                self.print_error(str(e))
                 continue

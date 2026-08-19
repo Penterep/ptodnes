@@ -221,24 +221,13 @@ class Datasource(metaclass=ABCMeta):
         return self._verbose and self._verbose_level >= level
     def print_info(self, msg, *args, **kwargs):
         if self._print_level(level=3):
-            kwargs.setdefault('clear_to_eol', True)
             ptprint(f"{self.__class__.__name__}: {msg}", "INFO", *args, **kwargs)
     def print_ok(self, msg, *args, **kwargs):
-        kwargs.setdefault('clear_to_eol', True)
         ptprint(out_if(f"{self.__class__.__name__}: {msg}", "OK", self._print_level(3)), *args, **kwargs)
     def print_error(self, msg, *args, **kwargs):
-        kwargs.setdefault('clear_to_eol', True)
         ptprint(out_if(f"{self.__class__.__name__}: {msg}", "ERROR", self._print_level(1)), *args, **kwargs)
     def print_warning(self, msg, *args, **kwargs):
-        kwargs.setdefault('clear_to_eol', True)
         ptprint(out_if(f"{self.__class__.__name__}: {msg}", "WARNING", self._print_level(2)), *args, **kwargs)
-    def print_progress(self, max, cur, label='reading', *args, **kwargs):
-        if self._print_level(level=3):
-            progress = cur / max if max else 0
-            bar_length = 30
-            filled = int(bar_length * progress)
-            bar = "▓" * filled + "░" * (bar_length - filled)
-            self.print_info(f"{label} [{bar}] {progress * 100:.1f}%", clear_to_eol=True, end='\r')
     def set_verbose(self, verbose, *args, **kwargs):
         self._verbose = verbose
     def set_verbose_level(self, verbose_level):
