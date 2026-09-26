@@ -130,7 +130,6 @@ class OdnesDNS(metaclass=Singleton):
             task = asyncio.create_task(tracked_query(domain, info))
             tasks.append(task)
         await asyncio.gather(*tasks)
-        # indicate querying finished (similar to wordlist reading completion)
         if progress_func:
             progress_func(max=total, cur=processed, label=f'Querying {qtype} done')
         if print_func:
