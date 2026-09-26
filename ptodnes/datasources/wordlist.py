@@ -1,24 +1,33 @@
 import asyncio
-import sys
-import aiofiles
 import re
 
-from ptodnes.datasources.datasource import Datasource, DatasourceObject, DNSRecordGenerator
-from ptodnes.DNS.odnesdns import OdnesDNS
+import punycode
 
 from ptodnes.DNS.dns_record_dict import DNSRecordDict
+from ptodnes.DNS.odnesdns import OdnesDNS
+from ptodnes.datasources.datasource import Datasource, DatasourceObject, DNSRecordGenerator
+from ptodnes.progress import ProgressManager
 
-import punycode
-import os
+# One DNS label: 1-63 chars, letters/digits/hyphen, no hyphen at start or end.
+# Checked per label, so long TLDs (.technology) and IDN TLDs (xn--p1ai) are accepted.
+_LABEL_RE = re.compile(r'^(?!-)[A-Za-z0-9-]{1,63}(?<!-)$')
 
-from rich.progress import (
-    Progress,
-    SpinnerColumn,
-    TextColumn,
-    BarColumn,
-    TaskProgressColumn,
-    TimeRemainingColumn,
-)
+DEFAULT_QTYPES = ['A', 'AAAA', 'CNAME']
+
+
+def is_valid_hostname(name: str) -> bool:
+    if len(name) > 253:
+        return False
+    labels = name.split('.')
+    return len(labels) >= 2 and all(_LABEL_RE.match(label) for label in labels)
+
+
+def _read_words(path: str) -> list[str]:
+    """Read the wordlist synchronously (called in a worker thread)."""
+    with open(path, 'r', encoding='utf-8', errors='replace') as file:
+        # strip() also removes '\r' from wordlists with Windows line endings
+        return [line.strip() for line in file if not line.lstrip().startswith('#')]
+
 
 class Wordlist(Datasource):
 
@@ -26,10 +35,7 @@ class Wordlist(Datasource):
         super().__init__()
         wordlists_cfg = self.config.get("wordlists", [])
         self._enabled = self.config.get('enabled', True)
-        if type(wordlists_cfg) is type(''):
-            self.__wordlists = [wordlists_cfg]
-        else:
-            self.__wordlists = wordlists_cfg
+        self.__wordlists = [wordlists_cfg] if isinstance(wordlists_cfg, str) else list(wordlists_cfg)
 
     async def check_api_key(self):
         pass
@@ -40,65 +46,43 @@ class Wordlist(Datasource):
     async def search(self, domain: str):
         if not self._enabled:
             return []
-        if self._wordlists:
-            self.__wordlists = self._wordlists
+        wordlists = self._wordlists or self.__wordlists  # CLI (-w) has priority over config
         self.print_info("Started wordlist search")
-        dns = OdnesDNS()
-        datasource_objects = []
-        rgx = re.compile(r'^((?!-)[A-Za-z0-9-]{1,63}(?<!-)\.)+[A-Za-z]{2,6}$')
-        async for sub in self.read_wordlist():
-            subdomain = sub + '.' + domain if sub else domain
-            d = ''
-            try:
-                d = subdomain
-                subdomain = punycode.convert(subdomain, True)
-            except:
-                continue
-            if rgx.match(subdomain):
-                datasource_object = DatasourceObject(domain=subdomain, DNSData=[
-                    DNSRecordGenerator(source=self.__class__.__name__, type='<NONE>', verified=False, value="<EMPTY>",
-                                       ttl=None,
-                                       record_last_seen=None)])
-                datasource_objects.append(datasource_object)
+
         res = DNSRecordDict()
-        res.extend(datasource_objects)
+        res.extend(self._build_candidates(domain, await self.read_wordlists(wordlists)))
+        if not res:
+            return []
 
-        qtypes: list
-        if self._qtype:
-            qtypes = self._qtype
-        else:
-            qtypes = ['A', 'AAAA', 'CNAME']
+        dns = OdnesDNS()
+        qtypes = self._qtype or DEFAULT_QTYPES
+        progress = ProgressManager()
 
-        qtasks = []
-        total_domains = len(res)
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            BarColumn(),
-            TaskProgressColumn(),
-            transient=True,
-            redirect_stdout=True,
-        ) as progress:
-            task_map: dict[str, int] = {}
-            for qtype in qtypes:
-                task_map[qtype] = progress.add_task(f"Querying {qtype}", total=total_domains)
+        async def query_type(qtype: str):
+            with progress.task(f"{domain} {qtype}", total=len(res), verbose=self._verbose) as bar:
+                await dns.query(res, qtype=qtype, on_progress=bar.advance)
 
-            for qtype in qtypes:
-                # bind qtype into lambda default to avoid late binding
-                def make_progress_func(tid):
-                    return lambda max, cur, label: progress.update(tid, total=max, completed=cur)
+        await asyncio.gather(*(query_type(qtype) for qtype in qtypes))
+        self.print_info(f"DNS queries for {len(res)} candidates done")
 
-                task = dns.get_loop().create_task(
-                    dns.query(res, qtype=qtype, print_func=self.print_info, progress_func=make_progress_func(task_map[qtype]))
-                )
-                qtasks.append(task)
-
-            await asyncio.gather(*qtasks)
-        if self._verbose:
-            print()
         res.filter_untrusted()
-
         return res.as_list()
+
+    def _build_candidates(self, domain: str, words: list[str]) -> list[DatasourceObject]:
+        candidates = []
+        # dict.fromkeys removes duplicates and keeps order
+        for word in dict.fromkeys(words):
+            subdomain = f"{word}.{domain}" if word else domain
+            try:
+                subdomain = punycode.convert(subdomain, True)
+            except Exception:
+                continue
+            if not is_valid_hostname(subdomain):
+                continue
+            candidates.append(DatasourceObject(domain=subdomain, DNSData=[
+                DNSRecordGenerator(source=self.__class__.__name__, type='<NONE>', verified=False,
+                                   value="<EMPTY>", ttl=None, record_last_seen=None)]))
+        return candidates
 
     async def reverse_search(self, IP: str):
         if not self._enabled:
@@ -108,41 +92,21 @@ class Wordlist(Datasource):
             self._barier = False
         return []
 
-    async def read_wordlist(self):
-        for wordlist in self.__wordlists:
+    async def read_wordlists(self, wordlists: list[str]) -> list[str]:
+        words: list[str] = []
+        for wordlist in wordlists:
+            self.print_info(f"Reading wordlist {wordlist}")
             try:
-                self.print_info(f"Reading wordlist {wordlist}")
-                file_size = os.path.getsize(wordlist)
-                with Progress(
-                    SpinnerColumn(),
-                    TextColumn("[progress.description]{task.description}"),
-                    BarColumn(),
-                    TaskProgressColumn(),
-                    transient=True,
-                    redirect_stdout=True,
-                ) as progress:
-                    task_id = progress.add_task("Reading wordlist", total=file_size)
-                    async with aiofiles.open(wordlist, 'r') as wordlist_file:
-                        async for line in wordlist_file:
-                            # advance by byte length of the line to reflect file progress
-                            try:
-                                advance_bytes = len(line.encode('utf-8'))
-                            except Exception:
-                                advance_bytes = len(line)
-                            progress.update(task_id, advance=advance_bytes)
-                            if line.endswith('\n'):
-                                line = line[:-1]
-                            yield line
-                self.print_info("Reading done")
+                # Reading line by line through aiofiles sends each line through the thread pool
+                # (500k lines ~ 80 s). One read in a single thread takes milliseconds.
+                words.extend(await asyncio.to_thread(_read_words, wordlist))
             except PermissionError:
                 self.print_error(f"Permissions denied for '{wordlist}'")
-                continue
             except FileNotFoundError:
-                self.print_error(f"Domains file '{wordlist}' not found")
-                continue
+                self.print_error(f"Wordlist '{wordlist}' not found")
             except IsADirectoryError:
-                self.print_error(f"Domains file '{wordlist}' is not a file")
-                continue
-            except Exception as e:
-                self.print_error(str(e))
-                continue
+                self.print_error(f"Wordlist '{wordlist}' is not a file")
+            except OSError as e:
+                self.print_error(f"Cannot read wordlist '{wordlist}': {e}")
+        self.print_info(f"Loaded {len(words)} words")
+        return words

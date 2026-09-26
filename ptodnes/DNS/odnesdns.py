@@ -1,4 +1,5 @@
 import asyncio
+from collections.abc import Callable
 import re
 from datetime import datetime, timezone
 import aiodns
@@ -106,37 +107,35 @@ class OdnesDNS(metaclass=Singleton):
         except aiodns.error.DNSError:
             pass
 
-    async def query(self, domain_list: DNSRecordDict, qtype='ANY', *, print_func=None, progress_func=None):
+    async def query(self, domain_list: DNSRecordDict, qtype='ANY', *, print_func=None,
+                    on_progress: Callable[[], None] | None = None, workers: int = 50):
         """
         Query provided domain list with selected record type, update its data with results.
         :param domain_list: domain list to query.
         :param qtype: query type.
-        :param progress_func: callback receiving (max, cur, label)
+        :param print_func: output function (per-domain messages).
+        :param on_progress: called once after each domain is processed (e.g. ProgressTask.advance).
+        :param workers: number of worker coroutines; concurrency is still limited by self._sem.
         """
-        tasks = []
-        total = len(domain_list)
-        processed = 0
+        queue: asyncio.Queue = asyncio.Queue()
+        for item in domain_list.items():
+            queue.put_nowait(item)
 
-        async def tracked_query(domain: str, info):
-            nonlocal processed
-            try:
-                await self.query_one(domain, info.records, qtype, print_func=print_func)
-            finally:
-                processed += 1
-                if progress_func:
-                    progress_func(max=total, cur=processed, label=f'Querying {qtype}')
+        # A fixed pool of workers instead of one task per domain:
+        # 100k domains x 3 types would otherwise create 300k tasks at once.
+        async def worker():
+            while True:
+                try:
+                    domain, info = queue.get_nowait()
+                except asyncio.QueueEmpty:
+                    return
+                try:
+                    await self.query_one(domain, info.records, qtype, print_func=print_func)
+                finally:
+                    if on_progress:
+                        on_progress()
 
-        for domain, info in domain_list.items():
-            task = asyncio.create_task(tracked_query(domain, info))
-            tasks.append(task)
-        await asyncio.gather(*tasks)
-        if progress_func:
-            progress_func(max=total, cur=processed, label=f'Querying {qtype} done')
+        await asyncio.gather(*(worker() for _ in range(min(workers, len(domain_list)))))
         if print_func:
-            try:
-                print_func(f"Querying {qtype} done", clear_to_eol=True)
-            except TypeError:
-                # print_func may not accept kwargs in some callers
-                print_func(f"Querying {qtype} done")
-
+            print_func(f"Querying {qtype} done", clear_to_eol=True)
 
