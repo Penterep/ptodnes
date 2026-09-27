@@ -59,7 +59,7 @@ class Wordlist(Datasource):
         progress = ProgressManager()
 
         async def query_type(qtype: str):
-            with progress.task(f"{domain} {qtype}", total=len(res), verbose=self._verbose) as bar:
+            with progress.task(f"Wordlist: {domain} {qtype}", total=len(res), verbose=self._verbose) as bar:
                 await dns.query(res, qtype=qtype, on_progress=bar.advance)
 
         await asyncio.gather(*(query_type(qtype) for qtype in qtypes))

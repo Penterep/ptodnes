@@ -226,8 +226,11 @@ class Datasource(metaclass=ABCMeta):
     def print_ok(self, msg, *args, **kwargs):
         # Rich redirects stdout while the progress bar is shown and cannot
         # overwrite a line with '\r', so in-place status lines would pile up
-        # as broken lines with raw ANSI codes. Skip them in that case.
+        # as broken lines with raw ANSI codes. Show them inside the live
+        # display instead.
         if kwargs.get('end') == '\r' and ProgressManager().is_active:
+            if self._print_level(3):
+                ProgressManager().status(self.__class__.__name__, msg)
             return
         ptprint(out_if(f"{self.__class__.__name__}: {msg}", "OK", self._print_level(3)), *args, **kwargs)
     def print_error(self, msg, *args, **kwargs):
