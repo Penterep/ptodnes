@@ -54,6 +54,7 @@ setup(
         "ptlibs>=1.0.0,<2.0.0",
         "aiofiles>=25.1.0,<26.0.0",
         "punycode>=0.2.0,<1.0.0",
+        "rich>=13.0.0,<16.0.0",
     ],
     extras_require={
         "docs": [
