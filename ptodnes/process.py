@@ -219,7 +219,10 @@ async def process(loop: asyncio.AbstractEventLoop,
                     _clear_status_when_done(task, datasource)
                     ds_tasks.append(task)
 
-        data = await asyncio.gather(*ds_tasks)
+        # live display stays on while datasources search, so their status lines
+        # are shown in it even when no wordlist bar is running
+        with ProgressManager().session(verbose=silent):
+            data = await asyncio.gather(*ds_tasks)
         merged = [j for i in data for j in i]
 
         res = DNSRecordDict()

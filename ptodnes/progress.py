@@ -4,8 +4,8 @@ Shared progress display for ptodnes.
 Rich allows only one live display per console (before rich 14.1 a second one
 raises LiveError, from 14.1 they nest but only in strict LIFO order). ptodnes
 runs datasources and domains concurrently, so every part of the program shares
-a single Progress instance here. It is started when the first task is added
-and stopped when the last task finishes.
+a single Progress instance here. It is started when the first task (or
+session) begins and stopped when the last one ends.
 
 Datasources that run meanwhile (VirusTotal, ...) can show one status line
 each above the bars via status(); the terminal allows only one live region,
@@ -43,10 +43,9 @@ class _StatusProgress(Progress):
     def get_renderables(self) -> Iterable[RenderableType]:
         # the refresh thread reads this while the event loop writes it -> copy
         for source, message in list(self.status_lines.items()):
-            line = Text("[✓] ", style="green")
-            line.append(f"{source}: ", style="bold")
-            line.append(message)
-            yield line
+            # only the bullet is green, same as ptprint OK
+            # (Text("...", style=...) would color the whole line)
+            yield Text.assemble(("[✓] ", "bright_green"), f"{source}: {message}")
         yield from super().get_renderables()
 
 
@@ -106,6 +105,33 @@ class ProgressManager(metaclass=Singleton):
         progress.start()
         return progress
 
+    def _acquire(self) -> _StatusProgress:
+        if self._progress is None:
+            self._progress = self._start()
+        self._active_tasks += 1
+        return self._progress
+
+    def _release(self) -> None:
+        self._active_tasks -= 1
+        if self._active_tasks == 0:
+            self._progress.stop()
+            self._progress = None
+
+    @contextmanager
+    def session(self, *, verbose: bool = True) -> Iterator[None]:
+        """
+        Keep the live display on screen for the whole block, even with no bars,
+        so status lines of datasources can be shown the whole time.
+        """
+        if not self._is_enabled(verbose):
+            yield
+            return
+        self._acquire()
+        try:
+            yield
+        finally:
+            self._release()
+
     @contextmanager
     def task(self, description: str, total: float | None = None, *, verbose: bool = True) -> Iterator[ProgressTask]:
         """
@@ -118,15 +144,10 @@ class ProgressManager(metaclass=Singleton):
             yield ProgressTask()  # no-op handle
             return
 
-        if self._progress is None:
-            self._progress = self._start()
-        self._active_tasks += 1
-        task_id = self._progress.add_task(description, total=total)
+        progress = self._acquire()
+        task_id = progress.add_task(description, total=total)
         try:
-            yield ProgressTask(self._progress, task_id)
+            yield ProgressTask(progress, task_id)
         finally:
-            self._progress.remove_task(task_id)
-            self._active_tasks -= 1
-            if self._active_tasks == 0:
-                self._progress.stop()
-                self._progress = None
+            progress.remove_task(task_id)
+            self._release()
