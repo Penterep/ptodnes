@@ -8,6 +8,7 @@ from ptlibs.ptprinthelper import out_if, ptprint
 from ptodnes.DNS.dnsinfo import DNSInfo
 from ptodnes.DNS.record import DNSRecord, SOARecord, MXRecord, CAARecord, SRVRecord
 from ptodnes.configprovider.configprovider import ConfigProvider
+from ptodnes.progress import ProgressManager
 
 
 def date_from_iso(date: str | None):
@@ -223,6 +224,11 @@ class Datasource(metaclass=ABCMeta):
         if self._print_level(level=3):
             ptprint(f"{self.__class__.__name__}: {msg}", "INFO", *args, **kwargs)
     def print_ok(self, msg, *args, **kwargs):
+        # Rich redirects stdout while the progress bar is shown and cannot
+        # overwrite a line with '\r', so in-place status lines would pile up
+        # as broken lines with raw ANSI codes. Skip them in that case.
+        if kwargs.get('end') == '\r' and ProgressManager().is_active:
+            return
         ptprint(out_if(f"{self.__class__.__name__}: {msg}", "OK", self._print_level(3)), *args, **kwargs)
     def print_error(self, msg, *args, **kwargs):
         ptprint(out_if(f"{self.__class__.__name__}: {msg}", "ERROR", self._print_level(1)), *args, **kwargs)

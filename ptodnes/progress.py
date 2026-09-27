@@ -51,6 +51,11 @@ class ProgressManager(metaclass=Singleton):
         self._progress: Progress | None = None
         self._active_tasks = 0
 
+    @property
+    def is_active(self) -> bool:
+        """True while the live progress display is on screen."""
+        return self._progress is not None
+
     def _is_enabled(self, verbose: bool) -> bool:
         return verbose and self._console.is_terminal
 
