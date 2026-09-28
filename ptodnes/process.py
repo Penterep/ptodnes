@@ -13,6 +13,13 @@ from ptodnes.DNS.odnesdns import OdnesDNS
 from ptodnes.DNS.dns_record_dict import DNSRecordDict
 from ptlibs.ptprinthelper import out_if, ptprint
 from ptodnes.factchecker.factchecker import VhostFactChecker
+from ptodnes.progress import ProgressManager
+
+
+def _clear_status_when_done(task: asyncio.Task, datasource: Datasource):
+    """Remove the datasource's status line from the progress display once it finishes."""
+    name = datasource.__class__.__name__
+    task.add_done_callback(lambda _: ProgressManager().clear_status(name))
 
 
 def domain_parser(arg_value):
@@ -187,9 +194,11 @@ async def process(loop: asyncio.AbstractEventLoop,
                 datasource.set_verbose_level(verbose)
                 for domain in domains if domains else []:
                     task = loop.create_task(datasource.search(domain))
+                    _clear_status_when_done(task, datasource)
                     ds_tasks.append(task)
                 for ip in ip_address if ip_address else []:
                     task = loop.create_task(datasource.reverse_search(ip))
+                    _clear_status_when_done(task, datasource)
                     ds_tasks.append(task)
         else:
             for selected_datasource in datasource:
@@ -203,12 +212,17 @@ async def process(loop: asyncio.AbstractEventLoop,
                 datasource.set_verbose_level(verbose)
                 for domain in domains if domains else []:
                     task = loop.create_task(datasource.search(domain))
+                    _clear_status_when_done(task, datasource)
                     ds_tasks.append(task)
                 for ip in ip_address if ip_address else []:
                     task = loop.create_task(datasource.reverse_search(ip))
+                    _clear_status_when_done(task, datasource)
                     ds_tasks.append(task)
 
-        data = await asyncio.gather(*ds_tasks)
+        # live display stays on while datasources search, so their status lines
+        # are shown in it even when no wordlist bar is running
+        with ProgressManager().session(verbose=silent):
+            data = await asyncio.gather(*ds_tasks)
         merged = [j for i in data for j in i]
 
         res = DNSRecordDict()
