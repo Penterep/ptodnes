@@ -1,6 +1,7 @@
 import asyncio
 import re
-from sqlite3 import OperationalError
+
+from psycopg2 import OperationalError  # aiopg is built on psycopg2
 
 from ptodnes.datasources.datasource import Datasource, DatasourceObject, DNSRecordGenerator
 import aiopg
@@ -70,9 +71,11 @@ class CRTsh(Datasource):
                         pool.close()
                         await pool.wait_closed()
                         return datasource_objects
+                    except (TimeoutError, OperationalError):
+                        raise  # handled by the outer except blocks (retry / not accepting connections)
                     except Exception as e:
-                        # Broad catch: connection refused, timeout, psycopg errors, etc.
-                        self.print_error(f"Error when connecting to CRTsh DB: {e}")
+                        # Any other error; !r shows the exception type even when the message is empty
+                        self.print_error(f"Error when connecting to CRTsh DB: {e!r}")
                         return []
                 except TimeoutError:
                     self.print_warning(f"Timed out when fetching data for {domain}. Trying again. ({i+1}/{self.retry})")
